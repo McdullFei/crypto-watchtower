@@ -1,0 +1,42 @@
+app:
+  env: "dev"
+
+http:
+  host: "0.0.0.0"
+  port: 8080
+
+binance:
+  spot_ws_base_url: "wss://stream.binance.com:9443/ws"
+  futures_ws_base_url: "wss://fstream.binance.com/ws"
+  futures_rest_base_url: "https://fapi.binance.com"
+  symbols:
+    - "BTCUSDT"
+    - "ETHUSDT"
+    - "SOLUSDT"
+
+postgres:
+  dsn: "postgres://postgres:postgres@localhost:5432/crypto_watchtower?sslmode=disable"
+
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 0
+
+telegram:
+  enabled: true
+  bot_token: "YOUR_BOT_TOKEN"
+  default_chat_id: "YOUR_CHAT_ID"
+  parse_mode: "Markdown"
+  mode: "polling"
+
+api:
+  bearer_token: "change-me"
+
+rules:
+  large_trade_single_usdt: 100000
+  large_trade_window_usdt: 500000
+  liquidation_usdt: 100000
+  funding_abs_percent: 0.08
+
+scheduler:
+  funding_interval_sec: 900
