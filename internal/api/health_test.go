@@ -3,10 +3,13 @@ package api
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/renfei198727/crypto-watchtower/internal/config"
 	"github.com/renfei198727/crypto-watchtower/internal/model"
@@ -26,6 +29,24 @@ type stubRuleService struct {
 	upserted  *model.AlertRule
 }
 
+type stubHealthCollector struct{}
+
+func (stubHealthCollector) Status() CollectorStatus {
+	return CollectorStatus{
+		Name:          "binance-spot",
+		Connected:     true,
+		Reconnects:    1,
+		LastEventAt:   timePtr(time.Unix(1710000000, 0).UTC()),
+		LastError:     "",
+		Subscribed:    []string{"BTCUSDT"},
+		LastConnectAt: timePtr(time.Unix(1710000001, 0).UTC()),
+	}
+}
+
+func timePtr(value time.Time) *time.Time {
+	return &value
+}
+
 func (s *stubRuleService) ListEnabled(context.Context) ([]model.AlertRule, error) {
 	return s.listRules, nil
 }
@@ -40,11 +61,100 @@ func TestHealthHandlerReturnsOK(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rec := httptest.NewRecorder()
 
-	NewHealthHandler().ServeHTTP(rec, req)
+	NewHealthHandler(nil).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("unexpected status: %d", rec.Code)
 	}
+}
+
+func TestHealthHandlerIncludesCollectorStatus(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	rec := httptest.NewRecorder()
+
+	NewHealthHandler([]CollectorStatusProvider{stubHealthCollector{}}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d", rec.Code)
+	}
+	var payload struct {
+		Data struct {
+			Collectors []CollectorStatus `json:"collectors"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode health response: %v", err)
+	}
+	if len(payload.Data.Collectors) != 1 || !payload.Data.Collectors[0].Connected {
+		t.Fatalf("unexpected collectors payload: %+v", payload.Data.Collectors)
+	}
+}
+
+func TestHealthHandlerIncludesDependencyStatus(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	rec := httptest.NewRecorder()
+
+	NewHealthHandler(nil, []DependencyStatusProvider{
+		stubDependency{name: "postgres"},
+		stubDependency{name: "redis"},
+	}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d", rec.Code)
+	}
+
+	var payload struct {
+		Data struct {
+			Dependencies map[string]DependencyStatus `json:"dependencies"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode health response: %v", err)
+	}
+	if payload.Data.Dependencies["postgres"].Status != "ok" {
+		t.Fatalf("expected postgres ok, got %+v", payload.Data.Dependencies["postgres"])
+	}
+	if payload.Data.Dependencies["redis"].Status != "ok" {
+		t.Fatalf("expected redis ok, got %+v", payload.Data.Dependencies["redis"])
+	}
+}
+
+func TestHealthHandlerReportsDependencyError(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	rec := httptest.NewRecorder()
+
+	NewHealthHandler(nil, []DependencyStatusProvider{
+		stubDependency{name: "postgres", err: errors.New("connection refused")},
+	}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d", rec.Code)
+	}
+
+	var payload struct {
+		Data struct {
+			Dependencies map[string]DependencyStatus `json:"dependencies"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode health response: %v", err)
+	}
+	if payload.Data.Dependencies["postgres"].Status != "error" {
+		t.Fatalf("expected postgres error, got %+v", payload.Data.Dependencies["postgres"])
+	}
+}
+
+type stubDependency struct {
+	name string
+	err  error
+}
+
+func (s stubDependency) Name() string {
+	return s.name
+}
+
+func (s stubDependency) Check(context.Context) error {
+	return s.err
 }
 
 func TestWriteRouteRequiresBearerToken(t *testing.T) {

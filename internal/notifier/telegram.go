@@ -1,9 +1,7 @@
 package notifier
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -12,9 +10,12 @@ import (
 )
 
 type TelegramNotifier struct {
-	BotToken string
-	ChatID   string
-	Client   *http.Client
+	BotToken         string
+	ChatID           string
+	Client           *http.Client
+	BaseURL          string
+	RetryMaxAttempts int
+	RetryBackoff     time.Duration
 }
 
 func NewTelegramNotifier(botToken, chatID string, client *http.Client) TelegramNotifier {
@@ -25,6 +26,7 @@ func NewTelegramNotifier(botToken, chatID string, client *http.Client) TelegramN
 		BotToken: botToken,
 		ChatID:   chatID,
 		Client:   client,
+		BaseURL:  "https://api.telegram.org/bot",
 	}
 }
 
@@ -32,30 +34,42 @@ func (n TelegramNotifier) Send(ctx context.Context, alert model.Alert) error {
 	if n.BotToken == "" || n.ChatID == "" {
 		return errors.New("telegram notifier is not configured")
 	}
-	body, err := json.Marshal(map[string]string{
-		"chat_id": n.ChatID,
-		"text":    FormatAlert(alert),
-	})
-	if err != nil {
-		return err
+
+	attempts := n.RetryMaxAttempts
+	if attempts <= 0 {
+		attempts = 3
 	}
-	req, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodPost,
-		"https://api.telegram.org/bot"+n.BotToken+"/sendMessage",
-		bytes.NewReader(body),
-	)
-	if err != nil {
-		return err
+	backoff := n.RetryBackoff
+	if backoff <= 0 {
+		backoff = 500 * time.Millisecond
 	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := n.Client.Do(req)
-	if err != nil {
-		return err
+	client := NewTelegramClient(n.BotToken, n.BaseURL, n.Client)
+
+	var lastErr error
+	for attempt := 1; attempt <= attempts; attempt++ {
+		lastErr = client.SendMessage(ctx, n.ChatID, FormatAlert(alert))
+		if lastErr == nil {
+			return nil
+		}
+		if !isRetryableTelegramError(lastErr) || attempt == attempts {
+			return lastErr
+		}
+		if err := sleepContext(ctx, backoff); err != nil {
+			return lastErr
+		}
+		backoff *= 2
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= http.StatusBadRequest {
-		return errors.New("telegram send failed")
+	return lastErr
+}
+
+func sleepContext(ctx context.Context, d time.Duration) error {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
 	}
-	return nil
 }

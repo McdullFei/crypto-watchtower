@@ -135,6 +135,7 @@ func defaultRuleConfigToRecords(cfg config.RulesConfig, symbols []string) []mode
 	for _, symbol := range symbols {
 		out = append(out,
 			model.AlertRule{Scope: "system", Exchange: "binance", Symbol: symbol, RuleType: "large_trade", Threshold: cfg.LargeTradeSingleUSDT, WindowSec: 60, Enabled: true},
+			model.AlertRule{Scope: "system", Exchange: "binance", Symbol: symbol, RuleType: "large_trade_window", Threshold: cfg.LargeTradeWindowUSDT, WindowSec: 60, Enabled: true},
 			model.AlertRule{Scope: "system", Exchange: "binance", Symbol: symbol, RuleType: "liquidation", Threshold: cfg.LiquidationUSDT, WindowSec: 60, Enabled: true},
 			model.AlertRule{Scope: "system", Exchange: "binance", Symbol: symbol, RuleType: "funding_anomaly", Threshold: cfg.FundingAbsPercent, WindowSec: 60, Enabled: true},
 		)

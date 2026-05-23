@@ -19,12 +19,16 @@ type Dependencies struct {
 	Symbols        []string
 	RuleConfig     config.RulesConfig
 	Rules          RuleService
+	Admin          AdminService
 	Telegram       AlertSender
+	Collectors     []CollectorStatusProvider
+	Dependencies   []DependencyStatusProvider
 }
 
 func NewRouter(deps Dependencies) http.Handler {
 	mux := http.NewServeMux()
-	mux.Handle("/health", NewHealthHandler())
+	mux.Handle("/health", NewHealthHandler(deps.Collectors, deps.Dependencies))
+	mountAdminRoutes(mux, deps)
 	mux.HandleFunc("/api/v1/symbols", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{
 			"code":    0,

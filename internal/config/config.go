@@ -96,6 +96,9 @@ func applyDefaults(cfg *Config) {
 	if cfg.Rules.LargeTradeSingleUSDT == 0 {
 		cfg.Rules.LargeTradeSingleUSDT = 100000
 	}
+	if cfg.Rules.LargeTradeWindowUSDT == 0 {
+		cfg.Rules.LargeTradeWindowUSDT = 500000
+	}
 	if cfg.Rules.LiquidationUSDT == 0 {
 		cfg.Rules.LiquidationUSDT = 100000
 	}

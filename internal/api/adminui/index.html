@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CryptoWatchtower Admin</title>
+    <link rel="stylesheet" href="/admin/app.css">
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <h1>CryptoWatchtower Admin</h1>
+          <p>Operator Console</p>
+        </div>
+        <label class="token-field">
+          <span>Bearer Token</span>
+          <input id="token-input" type="password" placeholder="change-me">
+        </label>
+        <button id="reload-button" class="primary-button">Reload</button>
+      </aside>
+      <main class="content">
+        <section class="hero">
+          <div>
+            <p class="eyebrow">Monitoring Console</p>
+            <h2>Binance anomaly operations</h2>
+          </div>
+          <p id="status-text" class="muted">Ready.</p>
+        </section>
+        <section class="metrics" id="overview-grid"></section>
+        <section class="panel">
+          <div class="panel-header">
+            <h3>Rules</h3>
+          </div>
+          <div id="rules-table" class="table"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-header">
+            <h3>Alerts</h3>
+          </div>
+          <div id="alerts-table" class="table"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-header">
+            <h3>Notifications</h3>
+          </div>
+          <div id="notifications-table" class="table"></div>
+        </section>
+      </main>
+    </div>
+    <script src="/admin/app.js"></script>
+  </body>
+  </html>

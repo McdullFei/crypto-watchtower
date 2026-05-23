@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -13,10 +14,49 @@ type AlertRuleRepo struct {
 }
 
 func (r AlertRuleRepo) ListEnabled(ctx context.Context) ([]model.AlertRule, error) {
-	rows, err := r.DB.Query(ctx, `
+	return r.queryRules(ctx, `
 		SELECT id, user_id, scope, exchange, symbol, rule_type, threshold, window_sec, enabled, created_at, updated_at
 		FROM alert_rules WHERE enabled = TRUE ORDER BY id ASC
 	`)
+}
+
+func (r AlertRuleRepo) ListSystemRules(ctx context.Context) ([]model.AlertRule, error) {
+	return r.queryRules(ctx, `
+		SELECT id, user_id, scope, exchange, symbol, rule_type, threshold, window_sec, enabled, created_at, updated_at
+		FROM alert_rules WHERE scope = 'system' ORDER BY id ASC
+	`)
+}
+
+func (r AlertRuleRepo) List(ctx context.Context, filter ListFilter) ([]model.AlertRule, error) {
+	query := `
+		SELECT id, user_id, scope, exchange, symbol, rule_type, threshold, window_sec, enabled, created_at, updated_at
+		FROM alert_rules
+		WHERE 1=1
+	`
+	args := make([]any, 0, 3)
+	if filter.Symbol != "" {
+		args = append(args, filter.Symbol)
+		query += fmt.Sprintf(" AND symbol = $%d", len(args))
+	}
+	if filter.RuleType != "" {
+		args = append(args, filter.RuleType)
+		query += fmt.Sprintf(" AND rule_type = $%d", len(args))
+	}
+	query += " ORDER BY updated_at DESC"
+	limit := normalizedLimit(filter.Limit)
+	args = append(args, limit)
+	query += fmt.Sprintf(" LIMIT $%d", len(args))
+	return r.queryRules(ctx, query, args...)
+}
+
+func (r AlertRuleRepo) CountEnabled(ctx context.Context) (int64, error) {
+	var count int64
+	err := r.DB.QueryRow(ctx, `SELECT COUNT(*) FROM alert_rules WHERE enabled = TRUE`).Scan(&count)
+	return count, err
+}
+
+func (r AlertRuleRepo) queryRules(ctx context.Context, query string, args ...any) ([]model.AlertRule, error) {
+	rows, err := r.DB.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

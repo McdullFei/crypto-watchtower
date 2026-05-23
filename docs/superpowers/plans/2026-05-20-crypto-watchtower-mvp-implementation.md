@@ -10,6 +10,127 @@
 
 ---
 
+## Implementation Status
+
+Last updated: 2026-05-21
+
+### Completed
+
+- [x] Task 1: Bootstrap the Go service and local runtime
+  - Implemented Go module, config loader, config validation, Dockerfile, Docker Compose, local run script, and README startup notes.
+  - Difference from original plan: project now uses Go 1.24, `net/http` mux, `redis/go-redis/v9`, and `gorilla/websocket`.
+
+- [x] Task 2: Define domain models and database schema
+  - Implemented `MarketEvent`, `Alert`, `AlertRule`, `User`, `NotificationLog`, and `migrations/001_init.sql`.
+  - Added `market_type` to events and alerts for spot/futures separation.
+
+- [x] Task 3: Implement the in-process event bus
+  - Implemented publish/subscribe bus with subscriber fan-out and context cancellation handling.
+
+- [x] Task 4: Implement Binance event normalization
+  - Implemented spot/futures `aggTrade`, futures liquidation, and funding event normalization.
+  - Added tests for notional calculation, liquidation side mapping, funding metadata, and real funding HTTP parsing.
+
+- [x] Task 5: Build the storage layer and health checks
+  - Implemented PostgreSQL and Redis clients, repository structs, event/alert/notification/rule persistence methods, and `/health`.
+  - Extended `/health` to expose collector status.
+
+- [x] Task 6: Implement the rule engine for large trades, liquidations, and funding anomalies
+  - Implemented large trade, liquidation, funding anomaly rules, rule engine, alert pipeline, Redis dedupe, and rule-level rate limiting.
+
+- [x] Task 7: Add Telegram formatting and delivery
+  - Implemented alert formatter and Telegram notifier with HTTP send behavior and basic configuration validation.
+
+- [x] Task 8: Wire the HTTP router and operator endpoints
+  - Implemented `/health`, `/api/v1/symbols`, `/api/v1/rules`, `/api/v1/alerts/test`, and `/api/v1/telegram/test`.
+  - Write endpoints require Bearer Token.
+
+- [x] Task 9: Add the Funding scheduler and collector orchestration
+  - Implemented funding scheduler, HTTP funding fetcher, spot/futures Binance WebSocket collector, and startup wiring.
+  - Added WebSocket reconnect loop with exponential backoff.
+
+- [x] Task 10: Integrate the end-to-end event pipeline and update docs
+  - Wired config, bus, collector, rule engine, repositories, Redis, Telegram notifier, scheduler, and HTTP API in `cmd/server/main.go`.
+  - Updated README quick start.
+
+### Completed Follow-Up Work Beyond Original Plan
+
+- [x] Docker Compose now starts PostgreSQL and Redis with named containers, health checks, restart policy, and persistent volumes.
+- [x] Binance WebSocket collector now supports combined stream URL generation for spot/futures.
+- [x] Binance WebSocket collector now publishes combined stream events into the event bus.
+- [x] Binance WebSocket collector now tracks health state: connected, reconnect count, last event time, last error, subscribed symbols, and last connect time.
+- [x] `/health` now returns collector state for spot and futures collectors.
+- [x] Docker image build has been verified.
+- [x] Startup-time SQL migration runner executes `migrations/*.sql` and records applied files in `schema_migrations`.
+- [x] `/health` now reports PostgreSQL and Redis dependency status.
+- [x] Docker Compose now includes the app service alongside PostgreSQL and Redis.
+- [x] Docker Compose app service supports configurable host port with `APP_HTTP_PORT`.
+
+### Remaining / Not Yet Implemented
+
+- [x] Dynamic rule loading from database into the active rule engine at runtime.
+- [x] Real Telegram Bot polling command handling: `/start`, `/status`, `/rules`, `/test`.
+- [x] Full notification retry policy.
+- [x] Collector heartbeat / read deadline / ping-pong handling.
+- [x] 60-second rolling large trade aggregation rule.
+- [ ] Integration test that runs against real PostgreSQL and Redis containers.
+- [ ] Automated 24-hour stability test.
+- [ ] Git commits for the implementation tasks. Files are implemented locally but not committed.
+
+### Latest Verification Evidence
+
+- [x] `go test ./...` passed in `golang:1.24` Docker container.
+- [x] `docker build -f deployments/Dockerfile -t crypto-watchtower:test .` passed.
+- [x] `/health` smoke test returned collector status from a running container.
+- [x] `docker compose -f deployments/docker-compose.yml config` passed.
+- [x] `APP_HTTP_PORT=18080 docker compose -f deployments/docker-compose.yml up -d --build` passed.
+- [x] `curl -sS http://127.0.0.1:18080/health` returned `dependencies.postgres.status=ok`, `dependencies.redis.status=ok`, and collector status.
+- [x] `docker logs --tail 80 crypto-watchtower-app` showed `migrations ready`.
+- [x] Focused collector tests now cover read deadline reconnect and ping/pong keepalive.
+- [x] Runtime rule service tests now cover startup rule load and post-upsert hot reload behavior.
+- [x] Telegram polling tests now cover `/start`, `/status`, `/rules`, and `/test`.
+- [x] Telegram notifier tests now cover retry on temporary failures.
+- [x] Rolling window rule tests now cover threshold crossing and sliding expiration.
+
+---
+
+## Phase 2: Admin Console MVP
+
+**Goal:** Build the first usable admin surface for operators, including management APIs and a lightweight web console served by the Go service itself.
+
+### Planned Scope
+
+- [x] Task 11: Add admin management APIs
+  - `GET /api/v1/admin/overview`
+  - `GET /api/v1/admin/rules`
+  - `GET /api/v1/admin/alerts`
+  - `GET /api/v1/admin/events`
+  - `GET /api/v1/admin/notifications`
+  - Support `symbol`, `rule_type`, `event_type`, `status`, and `limit` query filters where relevant.
+
+- [x] Task 12: Add lightweight admin web console
+  - Serve `/admin` from the Go service as static assets.
+  - Build first-view modules for:
+    - Overview cards
+    - Rule list
+    - Alert list
+    - Notification log list
+  - Use Bearer Token entered in browser and stored in local state for API calls.
+
+- [x] Task 13: Add admin-oriented read models and repository queries
+  - Alert list queries with reverse chronological ordering.
+  - Market event list queries with reverse chronological ordering.
+  - Notification log list queries with reverse chronological ordering.
+  - Overview counts for rules, alerts, events, and notifications.
+
+### Phase 2 Exit Criteria
+
+- [x] Operator can open `/admin` and see a usable management console.
+- [x] Operator can query recent alerts, events, rules, and notification logs without touching the database directly.
+- [x] Admin API endpoints are protected by Bearer Token and covered by automated tests.
+
+---
+
 ## File Structure Map
 
 ### Create
@@ -1313,4 +1434,3 @@ git commit -m "feat: wire mvp event pipeline"
 
 - Core types use `model.MarketEvent` and `model.Alert` consistently.
 - Rules emit alert types `large_trade`, `liquidation`, and `funding_anomaly` in line with the technical方案.
-
