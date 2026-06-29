@@ -61,3 +61,31 @@ func (r NotificationLogRepo) CountSince(ctx context.Context, since time.Time) (i
 	err := r.DB.QueryRow(ctx, `SELECT COUNT(*) FROM notification_logs WHERE created_at >= $1`, since).Scan(&count)
 	return count, err
 }
+
+// CountByStatusSince returns notification counts grouped by delivery status after the given time.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-29
+func (r NotificationLogRepo) CountByStatusSince(ctx context.Context, since time.Time) (map[string]int64, error) {
+	rows, err := r.DB.Query(ctx, `
+		SELECT status, COUNT(*) AS count
+		FROM notification_logs
+		WHERE created_at >= $1
+		GROUP BY status
+	`, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make(map[string]int64)
+	for rows.Next() {
+		var status string
+		var count int64
+		if err := rows.Scan(&status, &count); err != nil {
+			return nil, err
+		}
+		out[status] = count
+	}
+	return out, rows.Err()
+}

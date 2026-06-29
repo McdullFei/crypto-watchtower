@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 
@@ -106,6 +107,9 @@ func TestTelegramPollerHandlesStartAndRulesCommands(t *testing.T) {
 	}
 	if sentChatIDs[0] != "12345" || sentChatIDs[1] != "12345" || sentChatIDs[2] != "12345" {
 		t.Fatalf("expected replies to same chat, got %+v", sentChatIDs)
+	}
+	if !strings.Contains(sentMessages[0], "default alert channel") {
+		t.Fatalf("expected start reply to explain default alert channel behavior, got %q", sentMessages[0])
 	}
 }
 

@@ -50,6 +50,43 @@ func (s Service) Overview(ctx context.Context) (api.AdminOverview, error) {
 	}, nil
 }
 
+// Trends returns compact 24-hour alert and notification aggregates for operators.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-29
+func (s Service) Trends(ctx context.Context) (api.AdminTrends, error) {
+	since := time.Now().UTC().Add(-24 * time.Hour)
+
+	alertCount, err := s.repos.Alerts.CountSince(ctx, since)
+	if err != nil {
+		return api.AdminTrends{}, err
+	}
+	statusCounts, err := s.repos.NotificationLogs.CountByStatusSince(ctx, since)
+	if err != nil {
+		return api.AdminTrends{}, err
+	}
+	symbolCounts, err := s.repos.Alerts.CountBySymbolSince(ctx, since, 8)
+	if err != nil {
+		return api.AdminTrends{}, err
+	}
+
+	out := api.AdminTrends{
+		Alerts24h: alertCount,
+		Notifications24h: api.AdminNotificationTrend{
+			Sent:   statusCounts["sent"],
+			Failed: statusCounts["failed"],
+		},
+		SymbolAlerts24h: make([]api.AdminSymbolCount, 0, len(symbolCounts)),
+	}
+	for _, item := range symbolCounts {
+		out.SymbolAlerts24h = append(out.SymbolAlerts24h, api.AdminSymbolCount{
+			Symbol: item.Symbol,
+			Count:  item.Count,
+		})
+	}
+	return out, nil
+}
+
 func (s Service) ListRules(ctx context.Context, filter api.AdminListFilter) ([]model.AlertRule, error) {
 	return s.repos.AlertRules.List(ctx, storage.ListFilter{
 		Symbol:   filter.Symbol,

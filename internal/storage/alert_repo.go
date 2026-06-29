@@ -67,6 +67,35 @@ func (r AlertRepo) CountSince(ctx context.Context, since time.Time) (int64, erro
 	return count, err
 }
 
+// CountBySymbolSince returns the top alert counts by symbol after the given time.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-29
+func (r AlertRepo) CountBySymbolSince(ctx context.Context, since time.Time, limit int) ([]SymbolCount, error) {
+	rows, err := r.DB.Query(ctx, `
+		SELECT symbol, COUNT(*) AS count
+		FROM alerts
+		WHERE created_at >= $1
+		GROUP BY symbol
+		ORDER BY count DESC, symbol ASC
+		LIMIT $2
+	`, since, normalizedLimit(limit))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []SymbolCount
+	for rows.Next() {
+		var item SymbolCount
+		if err := rows.Scan(&item.Symbol, &item.Count); err != nil {
+			return nil, err
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}
+
 func (r AlertRepo) LatestCreatedAt(ctx context.Context) (*time.Time, error) {
 	var value *time.Time
 	err := r.DB.QueryRow(ctx, `SELECT MAX(created_at) FROM alerts`).Scan(&value)

@@ -112,6 +112,11 @@ func (p *TelegramPoller) PollOnce(ctx context.Context, offset int64) error {
 	return nil
 }
 
+// handleMessage processes a Telegram command and sends the matching command response.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-29
+// modified by __AUTHOR__ on 2026-06-29
 func (p *TelegramPoller) handleMessage(ctx context.Context, message telegramMessage) error {
 	command := normalizeTelegramCommand(message.Text)
 	if command == "" {
@@ -130,7 +135,7 @@ func (p *TelegramPoller) handleMessage(ctx context.Context, message telegramMess
 				return err
 			}
 		}
-		return p.client.SendMessage(ctx, chatID, "CryptoWatchtower Telegram binding completed.")
+		return p.client.SendMessage(ctx, chatID, "CryptoWatchtower Telegram chat saved. Real-time alerts currently use the configured default alert channel.")
 	case "/status":
 		return p.client.SendMessage(ctx, chatID, p.config.StatusText)
 	case "/rules":

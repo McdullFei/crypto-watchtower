@@ -26,13 +26,15 @@ CryptoWatchtower 是一个基于 Go 的实时币圈异动监控平台。当前�
 
 暂未完成：
 
-- Web Dashboard
+- 用户侧 Web Dashboard
 - 多交易所接入
 
 当前已提供第一版后台管理台骨架：
 
 - `/admin` 轻量后台页面
 - 管理 API：概览、规则、告警、事件、通知日志
+- 后台事件列表当前展示的是“告警相关事件”，不是 Binance 全量市场事件流
+- 运营后台已包含运行状态、列表过滤、系统规则编辑和 24 小时趋势摘要
 
 ## Architecture
 
@@ -62,6 +64,7 @@ Phase 1 只对接 Binance：
 
 - Docker Desktop / Docker Engine
 - Docker Compose
+- Runtime image versions: Go `1.24`, PostgreSQL `16.14`, Redis `7.0.15`
 - Optional: Go 1.24 if running without Docker
 
 ## Configuration
@@ -266,7 +269,7 @@ Authorization: Bearer <api.bearer_token>
 如果 `telegram.enabled=true` 且 `telegram.mode=polling`，Bot 会启用以下命令：
 
 ```text
-/start   绑定当前 chat_id
+/start   保存当前 chat_id；实时告警当前仍发送到配置的默认 chat/channel
 /status  查看服务状态摘要
 /rules   查看当前启用规则
 /test    回发一条测试告警
@@ -287,6 +290,13 @@ curl http://127.0.0.1:8080/api/v1/admin/overview \
   -H "Authorization: Bearer change-me"
 ```
 
+趋势摘要：
+
+```bash
+curl http://127.0.0.1:8080/api/v1/admin/trends \
+  -H "Authorization: Bearer change-me"
+```
+
 规则列表：
 
 ```bash
@@ -301,12 +311,14 @@ curl "http://127.0.0.1:8080/api/v1/admin/alerts?limit=20&symbol=BTCUSDT&rule_typ
   -H "Authorization: Bearer change-me"
 ```
 
-事件列表：
+告警相关事件列表：
 
 ```bash
 curl "http://127.0.0.1:8080/api/v1/admin/events?limit=20&symbol=BTCUSDT&event_type=agg_trade" \
   -H "Authorization: Bearer change-me"
 ```
+
+当前 `market_events` 只保存触发告警链路的相关事件，用于排障和运营观察；暂不保存 Binance 全量成交事件流，避免早期 PostgreSQL 写入压力失控。
 
 通知日志：
 
@@ -314,6 +326,13 @@ curl "http://127.0.0.1:8080/api/v1/admin/events?limit=20&symbol=BTCUSDT&event_ty
 curl "http://127.0.0.1:8080/api/v1/admin/notifications?limit=20&status=sent" \
   -H "Authorization: Bearer change-me"
 ```
+
+`/admin` 页面支持：
+
+- 查看 app、PostgreSQL、Redis 与 collector 运行状态。
+- 使用 `symbol`、`event_type`、`rule_type`、`status`、`limit` 过滤列表。
+- 编辑系统规则的 `threshold`、`window_sec`、`enabled`。
+- 查看 24 小时告警数量、通知成功 / 失败数量和 symbol 告警分布。
 
 ## Database Migration
 
@@ -354,6 +373,29 @@ docker run --rm \
 ```bash
 docker build -f deployments/Dockerfile -t crypto-watchtower:test .
 docker run --rm crypto-watchtower:test /usr/local/go/bin/go test ./...
+```
+
+Docker Compose smoke test：
+
+```bash
+APP_HTTP_PORT=18080 ./scripts/smoke-docker-compose.sh
+```
+
+该脚本会验证 Compose 配置、启动本地栈、检查 `/health`、读取 `/api/v1/rules` 和 `/api/v1/admin/events`，并确认未携带 Bearer Token 的写接口会返回 `401`。
+
+真实 PostgreSQL/Redis 集成测试需要先启动 Docker Compose 依赖，然后显式打开 `integration` build tag：
+
+```bash
+CW_INTEGRATION_TESTS=1 \
+CW_POSTGRES_DSN="postgres://postgres:postgres@127.0.0.1:5432/crypto_watchtower?sslmode=disable" \
+CW_REDIS_ADDR="127.0.0.1:6379" \
+go test -tags=integration ./internal/integration -v
+```
+
+24 小时稳定性验证流程见：
+
+```text
+docs/ops/24h-stability-check.md
 ```
 
 ## Project Layout

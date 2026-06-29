@@ -14,29 +14,39 @@ import (
 
 type stubAdminService struct {
 	overview      AdminOverview
+	trends        AdminTrends
 	rules         []model.AlertRule
 	alerts        []model.Alert
 	events        []model.MarketEvent
 	notifications []model.NotificationLog
+	lastFilter    AdminListFilter
 }
 
 func (s stubAdminService) Overview(context.Context) (AdminOverview, error) {
 	return s.overview, nil
 }
 
-func (s stubAdminService) ListRules(context.Context, AdminListFilter) ([]model.AlertRule, error) {
+func (s *stubAdminService) Trends(context.Context) (AdminTrends, error) {
+	return s.trends, nil
+}
+
+func (s *stubAdminService) ListRules(_ context.Context, filter AdminListFilter) ([]model.AlertRule, error) {
+	s.lastFilter = filter
 	return s.rules, nil
 }
 
-func (s stubAdminService) ListAlerts(context.Context, AdminListFilter) ([]model.Alert, error) {
+func (s *stubAdminService) ListAlerts(_ context.Context, filter AdminListFilter) ([]model.Alert, error) {
+	s.lastFilter = filter
 	return s.alerts, nil
 }
 
-func (s stubAdminService) ListEvents(context.Context, AdminListFilter) ([]model.MarketEvent, error) {
+func (s *stubAdminService) ListEvents(_ context.Context, filter AdminListFilter) ([]model.MarketEvent, error) {
+	s.lastFilter = filter
 	return s.events, nil
 }
 
-func (s stubAdminService) ListNotifications(context.Context, AdminListFilter) ([]model.NotificationLog, error) {
+func (s *stubAdminService) ListNotifications(_ context.Context, filter AdminListFilter) ([]model.NotificationLog, error) {
+	s.lastFilter = filter
 	return s.notifications, nil
 }
 
@@ -46,7 +56,7 @@ func TestAdminOverviewRequiresBearerToken(t *testing.T) {
 
 	NewRouter(Dependencies{
 		APIBearerToken: "secret",
-		Admin:          stubAdminService{},
+		Admin:          &stubAdminService{},
 	}).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusUnauthorized {
@@ -61,7 +71,7 @@ func TestAdminOverviewReturnsOverview(t *testing.T) {
 
 	NewRouter(Dependencies{
 		APIBearerToken: "secret",
-		Admin: stubAdminService{
+		Admin: &stubAdminService{
 			overview: AdminOverview{
 				RuleCount:         4,
 				AlertCount24h:     7,
@@ -87,16 +97,27 @@ func TestAdminOverviewReturnsOverview(t *testing.T) {
 	}
 }
 
-func TestAdminAlertsReturnsList(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/alerts?symbol=BTCUSDT&limit=10", nil)
+// TestAdminTrendsReturnsSummary verifies the Admin Trends API exposes lightweight operational counters.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-29
+func TestAdminTrendsReturnsSummary(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/trends", nil)
 	req.Header.Set("Authorization", "Bearer secret")
 	rec := httptest.NewRecorder()
 
 	NewRouter(Dependencies{
 		APIBearerToken: "secret",
-		Admin: stubAdminService{
-			alerts: []model.Alert{
-				{ID: "alert-1", Symbol: "BTCUSDT", Type: "large_trade", Title: "Large trade", CreatedAt: time.Unix(1710000000, 0).UTC()},
+		Admin: &stubAdminService{
+			trends: AdminTrends{
+				Alerts24h: 11,
+				Notifications24h: AdminNotificationTrend{
+					Sent:   9,
+					Failed: 2,
+				},
+				SymbolAlerts24h: []AdminSymbolCount{
+					{Symbol: "BTCUSDT", Count: 7},
+				},
 			},
 		},
 	}).ServeHTTP(rec, req)
@@ -104,8 +125,64 @@ func TestAdminAlertsReturnsList(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
 	}
+	if !strings.Contains(rec.Body.String(), "BTCUSDT") || !strings.Contains(rec.Body.String(), `"failed":2`) {
+		t.Fatalf("unexpected trends response: %s", rec.Body.String())
+	}
+}
+
+func TestAdminAlertsReturnsList(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/alerts?symbol=BTCUSDT&limit=10", nil)
+	req.Header.Set("Authorization", "Bearer secret")
+	rec := httptest.NewRecorder()
+	admin := &stubAdminService{
+		alerts: []model.Alert{
+			{ID: "alert-1", Symbol: "BTCUSDT", Type: "large_trade", Title: "Large trade", CreatedAt: time.Unix(1710000000, 0).UTC()},
+		},
+	}
+
+	NewRouter(Dependencies{
+		APIBearerToken: "secret",
+		Admin:          admin,
+	}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
 	if !strings.Contains(rec.Body.String(), "alert-1") {
 		t.Fatalf("expected alert id in response: %s", rec.Body.String())
+	}
+	if admin.lastFilter.Symbol != "BTCUSDT" || admin.lastFilter.Limit != 10 {
+		t.Fatalf("unexpected admin filter: %+v", admin.lastFilter)
+	}
+}
+
+// TestAdminEventsReturnsList verifies the Admin Events API exposes alert-related market events.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-29
+func TestAdminEventsReturnsList(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/events?symbol=BTCUSDT&event_type=agg_trade&limit=10", nil)
+	req.Header.Set("Authorization", "Bearer secret")
+	rec := httptest.NewRecorder()
+	admin := &stubAdminService{
+		events: []model.MarketEvent{
+			{ID: "event-1", Symbol: "BTCUSDT", EventType: "agg_trade", MarketType: "spot", Notional: 123456, EventTime: time.Unix(1710000000, 0).UTC()},
+		},
+	}
+
+	NewRouter(Dependencies{
+		APIBearerToken: "secret",
+		Admin:          admin,
+	}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "event-1") {
+		t.Fatalf("expected event id in response: %s", rec.Body.String())
+	}
+	if admin.lastFilter.Symbol != "BTCUSDT" || admin.lastFilter.EventType != "agg_trade" || admin.lastFilter.Limit != 10 {
+		t.Fatalf("unexpected admin filter: %+v", admin.lastFilter)
 	}
 }
 
@@ -120,5 +197,48 @@ func TestAdminPageIsServed(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "CryptoWatchtower Admin") {
 		t.Fatalf("expected admin page body, got %s", rec.Body.String())
+	}
+}
+
+// TestAdminPageIncludesAlertEventsPanel verifies the admin console exposes alert-related market events.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-29
+func TestAdminPageIncludesAlertEventsPanel(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	rec := httptest.NewRecorder()
+
+	NewRouter(Dependencies{}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "Alert Events") {
+		t.Fatalf("expected alert events panel in admin page, got %s", rec.Body.String())
+	}
+}
+
+// TestAdminPageIncludesPhase2AControls verifies the admin console exposes the Phase 2-A operator controls.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-29
+func TestAdminPageIncludesPhase2AControls(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	rec := httptest.NewRecorder()
+
+	NewRouter(Dependencies{}).ServeHTTP(rec, req)
+
+	body := rec.Body.String()
+	for _, expected := range []string{
+		"Runtime Status",
+		"List Filters",
+		"Rule Editor",
+		"Trend Summary",
+		"filter-symbol",
+		"rule-threshold",
+	} {
+		if !strings.Contains(body, expected) {
+			t.Fatalf("expected %q in admin page, got %s", expected, body)
+		}
 	}
 }

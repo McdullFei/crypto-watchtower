@@ -6,7 +6,7 @@
 
 **Architecture:** Implement a modular Go monolith with clear package boundaries for config, collectors, event bus, rule engine, notifier, storage, API, and scheduler. Use PostgreSQL for persistence, Redis for rate limiting and short-lived state, and Docker Compose for local and initial cloud deployment.
 
-**Tech Stack:** Go 1.22+, chi, pgx, go-redis, Telegram Bot API, PostgreSQL 16, Redis 7, Docker Compose
+**Tech Stack:** Go 1.24, net/http, pgx, go-redis, Telegram Bot API, PostgreSQL 16.14, Redis 7.0.15, Docker Compose
 
 ---
 
@@ -73,9 +73,27 @@ Last updated: 2026-05-21
 - [x] Full notification retry policy.
 - [x] Collector heartbeat / read deadline / ping-pong handling.
 - [x] 60-second rolling large trade aggregation rule.
-- [ ] Integration test that runs against real PostgreSQL and Redis containers.
+- [ ] User-side Web Dashboard.
+- [ ] Multi-exchange ingestion beyond Binance.
+- [x] Integration test that runs against real PostgreSQL and Redis containers.
 - [ ] Automated 24-hour stability test.
-- [ ] Git commits for the implementation tasks. Files are implemented locally but not committed.
+- [x] Telegram `/start` binding behavior is clarified. Phase 1 saves the chat id, while real-time alerts still use the configured default chat/channel.
+- [x] Admin Events panel is rendered in the web console and aligned with `/api/v1/admin/events`.
+- [x] `market_events` persistence semantics are clarified. Current runtime insertion happens only for events that produce alerts.
+- [x] Git commits for the earlier implementation tasks are no longer pending. Current Phase 1.5 edits remain in the working tree until this run is finalized.
+
+### Current Phase 1.5 Closure Slice
+
+This MVP implementation plan is now subordinate to `docs/plan/币圈异动监控平台总体开发计划.md`. The current execution slice is **Phase 1.5: Binance production loop and observability closure**, not multi-exchange expansion or a user-side SaaS dashboard.
+
+Recommended first closure tasks:
+
+- [x] Clarify `market_events` as alert-related events for now, deferring full event persistence with retention and write controls.
+- [x] Add the Admin Events panel and align it with `/api/v1/admin/events`.
+- [x] Add Docker Compose smoke verification for `/health`, `/api/v1/rules`, Admin Events, and Bearer-protected writes.
+- [x] Add integration tests against real PostgreSQL and Redis containers.
+- [x] Clarify Telegram `/start` binding behavior in README and Bot copy; bound-user alert fan-out remains deferred.
+- [x] Establish a repeatable 24-hour stability verification procedure.
 
 ### Latest Verification Evidence
 
@@ -102,6 +120,7 @@ Last updated: 2026-05-21
 
 - [x] Task 11: Add admin management APIs
   - `GET /api/v1/admin/overview`
+  - `GET /api/v1/admin/trends`
   - `GET /api/v1/admin/rules`
   - `GET /api/v1/admin/alerts`
   - `GET /api/v1/admin/events`
@@ -112,8 +131,13 @@ Last updated: 2026-05-21
   - Serve `/admin` from the Go service as static assets.
   - Build first-view modules for:
     - Overview cards
+    - Runtime status
+    - Trend summary
+    - Rule editor
+    - List filters
     - Rule list
     - Alert list
+    - Alert event list
     - Notification log list
   - Use Bearer Token entered in browser and stored in local state for API calls.
 
@@ -122,11 +146,15 @@ Last updated: 2026-05-21
   - Market event list queries with reverse chronological ordering.
   - Notification log list queries with reverse chronological ordering.
   - Overview counts for rules, alerts, events, and notifications.
+  - Trend counts for 24-hour alerts, notification delivery outcomes, and symbol alert distribution.
 
 ### Phase 2 Exit Criteria
 
 - [x] Operator can open `/admin` and see a usable management console.
-- [x] Operator can query recent alerts, events, rules, and notification logs without touching the database directly.
+- [x] Operator can query recent alerts, events, rules, and notification logs through Admin APIs without touching the database directly.
+- [x] Operator can view recent alert-related events directly in the `/admin` web console.
+- [x] Operator can inspect runtime status and 24-hour trends directly in the `/admin` web console.
+- [x] Operator can update system rule threshold, window, and enabled state from the `/admin` web console.
 - [x] Admin API endpoints are protected by Bearer Token and covered by automated tests.
 
 ---
@@ -322,7 +350,7 @@ version: "3.9"
 
 services:
   postgres:
-    image: postgres:16
+    image: postgres:16.14
     environment:
       POSTGRES_DB: crypto_watchtower
       POSTGRES_USER: postgres
@@ -331,7 +359,7 @@ services:
       - "5432:5432"
 
   redis:
-    image: redis:7
+    image: redis:7.0.15
     ports:
       - "6379:6379"
 ```

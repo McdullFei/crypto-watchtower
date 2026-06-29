@@ -23,6 +23,34 @@ type AdminOverview struct {
 	LastAlertAt       *time.Time `json:"last_alert_at"`
 }
 
+// AdminTrends contains lightweight 24-hour operational trend counters.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-29
+type AdminTrends struct {
+	Alerts24h        int64                  `json:"alerts_24h"`
+	Notifications24h AdminNotificationTrend `json:"notifications_24h"`
+	SymbolAlerts24h  []AdminSymbolCount     `json:"symbol_alerts_24h"`
+}
+
+// AdminNotificationTrend counts notification outcomes for the trend summary.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-29
+type AdminNotificationTrend struct {
+	Sent   int64 `json:"sent"`
+	Failed int64 `json:"failed"`
+}
+
+// AdminSymbolCount contains a compact symbol-to-count aggregate.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-29
+type AdminSymbolCount struct {
+	Symbol string `json:"symbol"`
+	Count  int64  `json:"count"`
+}
+
 type AdminListFilter struct {
 	Symbol    string
 	RuleType  string
@@ -33,18 +61,34 @@ type AdminListFilter struct {
 
 type AdminService interface {
 	Overview(ctx context.Context) (AdminOverview, error)
+	Trends(ctx context.Context) (AdminTrends, error)
 	ListRules(ctx context.Context, filter AdminListFilter) ([]model.AlertRule, error)
 	ListAlerts(ctx context.Context, filter AdminListFilter) ([]model.Alert, error)
 	ListEvents(ctx context.Context, filter AdminListFilter) ([]model.MarketEvent, error)
 	ListNotifications(ctx context.Context, filter AdminListFilter) ([]model.NotificationLog, error)
 }
 
+// mountAdminRoutes attaches the operator console static files and protected Admin APIs.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-29
+// modified by __AUTHOR__ on 2026-06-29
 func mountAdminRoutes(mux *http.ServeMux, deps Dependencies) {
 	mux.Handle("/admin", adminIndexHandler())
 	mux.Handle("/admin/", adminFileHandler())
 	mux.HandleFunc("/api/v1/admin/overview", func(w http.ResponseWriter, r *http.Request) {
 		handleAdminRequest(w, r, deps, func(admin AdminService, w http.ResponseWriter, r *http.Request) {
 			data, err := admin.Overview(r.Context())
+			if err != nil {
+				writeInternalError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"code": 0, "message": "ok", "data": data})
+		})
+	})
+	mux.HandleFunc("/api/v1/admin/trends", func(w http.ResponseWriter, r *http.Request) {
+		handleAdminRequest(w, r, deps, func(admin AdminService, w http.ResponseWriter, r *http.Request) {
+			data, err := admin.Trends(r.Context())
 			if err != nil {
 				writeInternalError(w, err)
 				return

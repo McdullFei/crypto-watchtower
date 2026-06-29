@@ -51,18 +51,44 @@ body {
   color: var(--muted);
 }
 
-.token-field {
+.token-field,
+.filter-group label,
+.rule-form label {
   display: grid;
   gap: 8px;
+}
+
+.token-field {
   margin-top: 24px;
 }
 
-.token-field input {
+.token-field input,
+.filter-group input,
+.filter-group select,
+.rule-form input,
+.rule-form select {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
+}
+
+.filter-group {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.filter-group h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.filter-group span,
+.rule-form span {
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .primary-button {
@@ -75,6 +101,12 @@ body {
   color: #fff;
   font-weight: 600;
   cursor: pointer;
+}
+
+.primary-button.inline {
+  width: auto;
+  margin-top: 0;
+  align-self: end;
 }
 
 .primary-button:hover {
@@ -117,6 +149,11 @@ body {
   gap: 16px;
 }
 
+.metrics.compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+
 .metric {
   padding: 18px;
 }
@@ -143,6 +180,12 @@ body {
   gap: 10px;
 }
 
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .table-row {
   display: grid;
   gap: 6px;
@@ -160,6 +203,22 @@ body {
   font-size: 13px;
 }
 
+.rule-form {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.checkbox-label {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+.checkbox-label input {
+  width: auto;
+}
+
 .error {
   color: var(--danger);
 }
@@ -170,6 +229,12 @@ body {
   }
 
   .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metrics.compact,
+  .status-grid,
+  .rule-form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -186,5 +251,15 @@ body {
 
   .metrics {
     grid-template-columns: 1fr;
+  }
+
+  .metrics.compact,
+  .status-grid,
+  .rule-form {
+    grid-template-columns: 1fr;
+  }
+
+  .primary-button.inline {
+    width: 100%;
   }
 }
