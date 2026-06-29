@@ -114,9 +114,9 @@ func (p *TelegramPoller) PollOnce(ctx context.Context, offset int64) error {
 
 // handleMessage processes a Telegram command and sends the matching command response.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
-// modified by __AUTHOR__ on 2026-06-29
+// modified by monsterfei on 2026-06-29
 func (p *TelegramPoller) handleMessage(ctx context.Context, message telegramMessage) error {
 	command := normalizeTelegramCommand(message.Text)
 	if command == "" {

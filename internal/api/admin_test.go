@@ -99,7 +99,7 @@ func TestAdminOverviewReturnsOverview(t *testing.T) {
 
 // TestAdminTrendsReturnsSummary verifies the Admin Trends API exposes lightweight operational counters.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 func TestAdminTrendsReturnsSummary(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/trends", nil)
@@ -156,9 +156,32 @@ func TestAdminAlertsReturnsList(t *testing.T) {
 	}
 }
 
+// TestAdminAlertsParsesExchangeFilter verifies Admin list APIs accept exchange.
+//
+// Author: monsterfei
+// Date: 2026-06-29
+func TestAdminAlertsParsesExchangeFilter(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/alerts?exchange=okx&symbol=BTCUSDT&limit=10", nil)
+	req.Header.Set("Authorization", "Bearer secret")
+	rec := httptest.NewRecorder()
+	admin := &stubAdminService{}
+
+	NewRouter(Dependencies{
+		APIBearerToken: "secret",
+		Admin:          admin,
+	}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
+	if admin.lastFilter.Exchange != "okx" || admin.lastFilter.Symbol != "BTCUSDT" {
+		t.Fatalf("unexpected admin filter: %+v", admin.lastFilter)
+	}
+}
+
 // TestAdminEventsReturnsList verifies the Admin Events API exposes alert-related market events.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 func TestAdminEventsReturnsList(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/events?symbol=BTCUSDT&event_type=agg_trade&limit=10", nil)
@@ -202,7 +225,7 @@ func TestAdminPageIsServed(t *testing.T) {
 
 // TestAdminPageIncludesAlertEventsPanel verifies the admin console exposes alert-related market events.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 func TestAdminPageIncludesAlertEventsPanel(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
@@ -220,7 +243,7 @@ func TestAdminPageIncludesAlertEventsPanel(t *testing.T) {
 
 // TestAdminPageIncludesPhase2AControls verifies the admin console exposes the Phase 2-A operator controls.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 func TestAdminPageIncludesPhase2AControls(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
@@ -239,6 +262,54 @@ func TestAdminPageIncludesPhase2AControls(t *testing.T) {
 	} {
 		if !strings.Contains(body, expected) {
 			t.Fatalf("expected %q in admin page, got %s", expected, body)
+		}
+	}
+}
+
+// TestAdminPageIncludesLanguageControls verifies the admin console exposes bilingual controls.
+//
+// Author: monsterfei
+// Date: 2026-06-29
+func TestAdminPageIncludesLanguageControls(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	rec := httptest.NewRecorder()
+
+	NewRouter(Dependencies{}).ServeHTTP(rec, req)
+
+	body := rec.Body.String()
+	for _, expected := range []string{
+		`id="language-select"`,
+		`data-i18n="language.label"`,
+		`data-i18n="panel.runtime"`,
+		`<option value="zh">中文</option>`,
+		`<option value="en">English</option>`,
+	} {
+		if !strings.Contains(body, expected) {
+			t.Fatalf("expected %q in admin page, got %s", expected, body)
+		}
+	}
+}
+
+// TestAdminScriptIncludesBilingualDictionary verifies dynamic admin text can switch languages.
+//
+// Author: monsterfei
+// Date: 2026-06-29
+func TestAdminScriptIncludesBilingualDictionary(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/admin/app.js", nil)
+	rec := httptest.NewRecorder()
+
+	NewRouter(Dependencies{}).ServeHTTP(rec, req)
+
+	body := rec.Body.String()
+	for _, expected := range []string{
+		"cw-admin-language",
+		"const translations",
+		"applyLanguage",
+		"运营后台",
+		"Monitoring Console",
+	} {
+		if !strings.Contains(body, expected) {
+			t.Fatalf("expected %q in admin script, got %s", expected, body)
 		}
 	}
 }

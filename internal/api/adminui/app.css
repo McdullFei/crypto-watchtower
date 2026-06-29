@@ -47,10 +47,12 @@ body {
 .brand p,
 .muted,
 .eyebrow,
-.token-field span {
+.token-field span,
+.language-field span {
   color: var(--muted);
 }
 
+.language-field,
 .token-field,
 .filter-group label,
 .rule-form label {
@@ -58,10 +60,15 @@ body {
   gap: 8px;
 }
 
+.language-field {
+  margin-top: 18px;
+}
+
 .token-field {
   margin-top: 24px;
 }
 
+.language-field select,
 .token-field input,
 .filter-group input,
 .filter-group select,

@@ -1,6 +1,6 @@
 # CryptoWatchtower
 
-CryptoWatchtower 是一个基于 Go 的实时币圈异动监控平台。当前阶段聚焦 **Binance 市场数据采集、异常规则判断、Telegram 告警推送、PostgreSQL/Redis 状态管理**，目标是先跑通稳定的实时监控链路，再逐步扩展 Dashboard、Discord、AI Summary、多交易所和 SaaS 能力。
+CryptoWatchtower 是一个基于 Go 的实时币圈异动监控平台。当前阶段聚焦 **Binance / OKX 市场数据采集、异常规则判断、Telegram 告警推送、PostgreSQL/Redis 状态管理**，目标是先跑通稳定的实时监控链路，再逐步扩展 Dashboard、Discord、AI Summary 和 SaaS 能力。
 
 > CryptoWatchtower only provides real-time market telemetry and alerting. It is not financial advice.
 >
@@ -23,23 +23,23 @@ CryptoWatchtower 是一个基于 Go 的实时币圈异动监控平台。当前�
 - Redis 去重与限流钩子
 - `/health` 健康检查，包含 PostgreSQL、Redis、collector 状态
 - Dockerfile 与 Docker Compose
+- OKX 可选只读 collector：spot/swap trades、swap liquidation、swap funding-rate
 
 暂未完成：
 
 - 用户侧 Web Dashboard
-- 多交易所接入
 
 当前已提供第一版后台管理台骨架：
 
 - `/admin` 轻量后台页面
 - 管理 API：概览、规则、告警、事件、通知日志
 - 后台事件列表当前展示的是“告警相关事件”，不是 Binance 全量市场事件流
-- 运营后台已包含运行状态、列表过滤、系统规则编辑和 24 小时趋势摘要
+- 运营后台已包含运行状态、exchange/symbol/list 过滤、系统规则编辑和 24 小时趋势摘要
 
 ## Architecture
 
 ```text
-Binance WS / REST
+Binance WS / REST, OKX Public WS / REST
   -> Collector
   -> EventBus
   -> Rule Engine
@@ -53,12 +53,21 @@ Redis:
   dedupe keys / rule rate limit keys / short-lived state
 ```
 
-Phase 1 只对接 Binance：
+默认启用 Binance：
 
 - Spot `aggTrade`
 - Futures `aggTrade`
 - Futures `forceOrder`
 - Futures Funding REST
+
+OKX 当前为可选 collector，默认关闭：
+
+- Spot `trades`
+- Swap `trades`
+- Swap `liquidation-orders`
+- Swap `funding-rate`
+- OKX swap notional 依赖 `GET /api/v5/public/instruments` 的 `ctVal`，不能把合约张数直接当币数量。
+- OKX live `trades` 频道可能受交易等级限制；如果返回 `64003`，表示交易所权限限制，不是本地解析错误。
 
 ## Requirements
 
@@ -79,10 +88,19 @@ configs/config.example.yaml
 
 | Key | Description |
 | --- | --- |
+| `binance.enabled` | Enable Binance collectors and funding fetcher |
 | `binance.spot_ws_base_url` | Binance Spot WebSocket base URL |
 | `binance.futures_ws_base_url` | Binance Futures WebSocket base URL |
 | `binance.futures_rest_base_url` | Binance Futures REST base URL |
 | `binance.symbols` | Monitored symbols |
+| `okx.enabled` | Enable optional OKX public collector |
+| `okx.public_ws_base_url` | OKX public WebSocket base URL |
+| `okx.rest_base_url` | OKX public REST base URL |
+| `okx.symbols` | OKX monitored symbols, using compact symbols such as `BTCUSDT` |
+| `webhook.enabled` | Enable optional Discord-compatible webhook notifications |
+| `webhook.url` | Webhook endpoint URL |
+| `webhook.channel` | Notification log channel name, defaults to `discord` |
+| `webhook.timeout_sec` | Webhook HTTP timeout in seconds |
 | `postgres.dsn` | PostgreSQL DSN |
 | `redis.addr` | Redis address |
 | `telegram.bot_token` | Telegram Bot token |
@@ -97,7 +115,18 @@ CW_REDIS_ADDR="localhost:6379"
 CW_TELEGRAM_BOT_TOKEN="YOUR_BOT_TOKEN"
 CW_TELEGRAM_DEFAULT_CHAT_ID="YOUR_CHAT_ID"
 CW_API_BEARER_TOKEN="change-me"
+CW_BINANCE_ENABLED="true"
+CW_OKX_ENABLED="true"
+CW_OKX_PUBLIC_WS_BASE_URL="wss://ws.okx.com:8443/ws/v5/public"
+CW_OKX_REST_BASE_URL="https://www.okx.com"
+CW_OKX_SYMBOLS="BTCUSDT,ETHUSDT,SOLUSDT"
+CW_WEBHOOK_ENABLED="false"
+CW_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+CW_WEBHOOK_CHANNEL="discord"
+CW_WEBHOOK_TIMEOUT_SEC="10"
 ```
+
+Discord / Webhook 通知默认关闭。开启后会复用现有告警链路，并在 `notification_logs` 中按 `channel`、`target`、`status`、`error_message` 记录每个渠道的投递结果。
 
 ## Run With Docker Compose
 
@@ -136,6 +165,8 @@ curl http://127.0.0.1:18080/health
 ```text
 http://127.0.0.1:8080/admin
 ```
+
+后台支持中英双语切换；写操作和 Admin 数据加载需要填写 `api.bearer_token` 对应的 Bearer Token。
 
 查看日志：
 
@@ -300,21 +331,21 @@ curl http://127.0.0.1:8080/api/v1/admin/trends \
 规则列表：
 
 ```bash
-curl "http://127.0.0.1:8080/api/v1/admin/rules?limit=20&symbol=BTCUSDT" \
+curl "http://127.0.0.1:8080/api/v1/admin/rules?limit=20&exchange=okx&symbol=BTCUSDT" \
   -H "Authorization: Bearer change-me"
 ```
 
 告警列表：
 
 ```bash
-curl "http://127.0.0.1:8080/api/v1/admin/alerts?limit=20&symbol=BTCUSDT&rule_type=large_trade" \
+curl "http://127.0.0.1:8080/api/v1/admin/alerts?limit=20&exchange=okx&symbol=BTCUSDT&rule_type=large_trade" \
   -H "Authorization: Bearer change-me"
 ```
 
 告警相关事件列表：
 
 ```bash
-curl "http://127.0.0.1:8080/api/v1/admin/events?limit=20&symbol=BTCUSDT&event_type=agg_trade" \
+curl "http://127.0.0.1:8080/api/v1/admin/events?limit=20&exchange=okx&symbol=BTCUSDT&event_type=agg_trade" \
   -H "Authorization: Bearer change-me"
 ```
 
@@ -330,8 +361,8 @@ curl "http://127.0.0.1:8080/api/v1/admin/notifications?limit=20&status=sent" \
 `/admin` 页面支持：
 
 - 查看 app、PostgreSQL、Redis 与 collector 运行状态。
-- 使用 `symbol`、`event_type`、`rule_type`、`status`、`limit` 过滤列表。
-- 编辑系统规则的 `threshold`、`window_sec`、`enabled`。
+- 使用 `exchange`、`symbol`、`event_type`、`rule_type`、`status`、`limit` 过滤列表。
+- 编辑系统规则的 `exchange`、`threshold`、`window_sec`、`enabled`。
 - 查看 24 小时告警数量、通知成功 / 失败数量和 symbol 告警分布。
 
 ## Database Migration

@@ -10,7 +10,6 @@ import (
 
 	"github.com/renfei198727/crypto-watchtower/internal/model"
 	"github.com/renfei198727/crypto-watchtower/internal/notifier"
-	"github.com/renfei198727/crypto-watchtower/internal/storage"
 )
 
 type Config struct {
@@ -108,19 +107,65 @@ type Sender interface {
 	Send(context.Context, model.Alert) error
 }
 
+// NamedSender wraps one notification sender with log metadata.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-29
+type NamedSender interface {
+	Name() string
+	Target() string
+	Send(context.Context, model.Alert) error
+}
+
+type namedSender struct {
+	name   string
+	target string
+	sender Sender
+}
+
+// NewNamedSender adds channel metadata to a sender without changing its send behavior.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-29
+// @param name Notification channel name.
+// @param target Notification target identifier.
+// @param sender Sender implementation.
+// @returns Channel-aware sender.
+func NewNamedSender(name string, target string, sender Sender) NamedSender {
+	return namedSender{name: name, target: target, sender: sender}
+}
+
+func (s namedSender) Name() string {
+	return s.name
+}
+
+func (s namedSender) Target() string {
+	return s.target
+}
+
+func (s namedSender) Send(ctx context.Context, alert model.Alert) error {
+	return s.sender.Send(ctx, alert)
+}
+
 type Evaluator interface {
 	Evaluate(model.MarketEvent) []model.Alert
 }
 
-type Pipeline struct {
-	engine Evaluator
-	repos  *storage.Repositories
-	redis  redis.UniversalClient
-	send   Sender
+type pipelineRepositories interface {
+	InsertMarketEvent(context.Context, model.MarketEvent) error
+	InsertAlert(context.Context, model.Alert) error
+	InsertNotificationLog(context.Context, model.NotificationLog) error
 }
 
-func NewPipeline(engine Evaluator, repos *storage.Repositories, redis redis.UniversalClient, send Sender) Pipeline {
-	return Pipeline{engine: engine, repos: repos, redis: redis, send: send}
+type Pipeline struct {
+	engine  Evaluator
+	repos   pipelineRepositories
+	redis   redis.UniversalClient
+	senders []NamedSender
+}
+
+func NewPipeline(engine Evaluator, repos pipelineRepositories, redis redis.UniversalClient, senders ...NamedSender) Pipeline {
+	return Pipeline{engine: engine, repos: repos, redis: redis, senders: senders}
 }
 
 func (p Pipeline) HandleEvent(ctx context.Context, event model.MarketEvent) error {
@@ -134,31 +179,33 @@ func (p Pipeline) HandleEvent(ctx context.Context, event model.MarketEvent) erro
 			continue
 		}
 
-		if err := p.repos.MarketEvents.Insert(ctx, event); err != nil {
+		if err := p.repos.InsertMarketEvent(ctx, event); err != nil {
 			return fmt.Errorf("insert market event: %w", err)
 		}
-		if err := p.repos.Alerts.Insert(ctx, alert); err != nil {
+		if err := p.repos.InsertAlert(ctx, alert); err != nil {
 			return fmt.Errorf("insert alert: %w", err)
 		}
-		sendErr := p.send.Send(ctx, alert)
-		logStatus := "sent"
-		logMessage := ""
-		if sendErr != nil {
-			logStatus = "failed"
-			logMessage = sendErr.Error()
-		}
-		if err := p.repos.NotificationLogs.Insert(ctx, model.NotificationLog{
-			AlertID:      alert.ID,
-			Channel:      "telegram",
-			Target:       "default",
-			Status:       logStatus,
-			ErrorMessage: logMessage,
-			CreatedAt:    time.Now().UTC(),
-		}); err != nil {
-			return fmt.Errorf("insert notification log: %w", err)
-		}
-		if sendErr != nil {
-			return sendErr
+		for _, sender := range p.senders {
+			sendErr := sender.Send(ctx, alert)
+			logStatus := "sent"
+			logMessage := ""
+			if sendErr != nil {
+				logStatus = "failed"
+				logMessage = sendErr.Error()
+			}
+			if err := p.repos.InsertNotificationLog(ctx, model.NotificationLog{
+				AlertID:      alert.ID,
+				Channel:      sender.Name(),
+				Target:       sender.Target(),
+				Status:       logStatus,
+				ErrorMessage: logMessage,
+				CreatedAt:    time.Now().UTC(),
+			}); err != nil {
+				return fmt.Errorf("insert notification log: %w", err)
+			}
+			if sendErr != nil {
+				return sendErr
+			}
 		}
 	}
 	return nil

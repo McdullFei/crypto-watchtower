@@ -74,7 +74,7 @@ Last updated: 2026-05-21
 - [x] Collector heartbeat / read deadline / ping-pong handling.
 - [x] 60-second rolling large trade aggregation rule.
 - [ ] User-side Web Dashboard.
-- [ ] Multi-exchange ingestion beyond Binance.
+- [x] Multi-exchange ingestion beyond Binance: initial optional OKX public collector is implemented for spot/swap trades, swap liquidation orders, and swap funding-rate.
 - [x] Integration test that runs against real PostgreSQL and Redis containers.
 - [ ] Automated 24-hour stability test.
 - [x] Telegram `/start` binding behavior is clarified. Phase 1 saves the chat id, while real-time alerts still use the configured default chat/channel.
@@ -85,6 +85,8 @@ Last updated: 2026-05-21
 ### Current Phase 1.5 Closure Slice
 
 This MVP implementation plan is now subordinate to `docs/plan/币圈异动监控平台总体开发计划.md`. The current execution slice is **Phase 1.5: Binance production loop and observability closure**, not multi-exchange expansion or a user-side SaaS dashboard.
+
+The follow-up OKX integration plan is tracked in `docs/superpowers/plans/[2]2026-06-29-okx-exchange-integration.md`.
 
 Recommended first closure tasks:
 

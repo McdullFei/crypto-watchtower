@@ -64,7 +64,7 @@ func (r NotificationLogRepo) CountSince(ctx context.Context, since time.Time) (i
 
 // CountByStatusSince returns notification counts grouped by delivery status after the given time.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 func (r NotificationLogRepo) CountByStatusSince(ctx context.Context, since time.Time) (map[string]int64, error) {
 	rows, err := r.DB.Query(ctx, `

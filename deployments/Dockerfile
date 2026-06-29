@@ -11,5 +11,6 @@ WORKDIR /app
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /out/server /app/server
 COPY configs/config.example.yaml /app/configs/config.example.yaml
+COPY migrations /app/migrations
 EXPOSE 8080
 CMD ["/app/server"]

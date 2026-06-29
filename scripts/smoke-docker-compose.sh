@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Runs the local Docker Compose smoke checks for the Phase 1.5 closure loop.
 #
-# Author: __AUTHOR__
+# Author: monsterfei
 # Date: 2026-06-29
 
 ENV_FILE="${ENV_FILE:-deployments/.env.local}"

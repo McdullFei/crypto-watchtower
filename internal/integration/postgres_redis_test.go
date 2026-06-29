@@ -17,7 +17,7 @@ import (
 
 // TestPostgresRedisRepositoriesExerciseRealDependencies verifies repository and Redis behavior against real containers.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 func TestPostgresRedisRepositoriesExerciseRealDependencies(t *testing.T) {
 	if os.Getenv("CW_INTEGRATION_TESTS") != "1" {
@@ -167,7 +167,7 @@ func TestPostgresRedisRepositoriesExerciseRealDependencies(t *testing.T) {
 
 // getenvDefault returns an environment value or the provided fallback.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 func getenvDefault(key string, fallback string) string {
 	value := os.Getenv(key)
@@ -179,7 +179,7 @@ func getenvDefault(key string, fallback string) string {
 
 // repoRoot returns the repository root for locating integration fixtures.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 func repoRoot(t *testing.T) string {
 	t.Helper()
@@ -192,7 +192,7 @@ func repoRoot(t *testing.T) string {
 
 // containsNotificationForAlert reports whether logs include the expected alert id.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 func containsNotificationForAlert(logs []model.NotificationLog, alertID string) bool {
 	for _, item := range logs {

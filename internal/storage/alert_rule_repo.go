@@ -33,7 +33,11 @@ func (r AlertRuleRepo) List(ctx context.Context, filter ListFilter) ([]model.Ale
 		FROM alert_rules
 		WHERE 1=1
 	`
-	args := make([]any, 0, 3)
+	args := make([]any, 0, 4)
+	if filter.Exchange != "" {
+		args = append(args, filter.Exchange)
+		query += fmt.Sprintf(" AND exchange = $%d", len(args))
+	}
 	if filter.Symbol != "" {
 		args = append(args, filter.Symbol)
 		query += fmt.Sprintf(" AND symbol = $%d", len(args))

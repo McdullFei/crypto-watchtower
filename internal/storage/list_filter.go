@@ -1,6 +1,7 @@
 package storage
 
 type ListFilter struct {
+	Exchange  string
 	Symbol    string
 	RuleType  string
 	EventType string
@@ -10,7 +11,7 @@ type ListFilter struct {
 
 // SymbolCount stores a bounded aggregate count for one market symbol.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 type SymbolCount struct {
 	Symbol string

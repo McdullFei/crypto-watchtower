@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,75 +10,97 @@
     <div class="shell">
       <aside class="sidebar">
         <div class="brand">
-          <h1>CryptoWatchtower Admin</h1>
-          <p>Operator Console</p>
+          <h1 data-i18n="brand.title">CryptoWatchtower Admin</h1>
+          <p data-i18n="brand.subtitle">Operator Console</p>
         </div>
+        <label class="language-field">
+          <span data-i18n="language.label">Language</span>
+          <select id="language-select" aria-label="Language">
+            <option value="zh">中文</option>
+            <option value="en">English</option>
+          </select>
+        </label>
         <label class="token-field">
-          <span>Bearer Token</span>
+          <span data-i18n="auth.token">Bearer Token</span>
           <input id="token-input" type="password" placeholder="change-me">
         </label>
         <div class="filter-group">
-          <h2>List Filters</h2>
+          <h2 data-i18n="filter.title">List Filters</h2>
           <label>
-            <span>Symbol</span>
-            <input id="filter-symbol" type="text" placeholder="BTCUSDT">
-          </label>
-          <label>
-            <span>Event Type</span>
-            <input id="filter-event-type" type="text" placeholder="agg_trade">
-          </label>
-          <label>
-            <span>Rule Type</span>
-            <input id="filter-rule-type" type="text" placeholder="large_trade">
-          </label>
-          <label>
-            <span>Status</span>
-            <select id="filter-status">
-              <option value="">Any</option>
-              <option value="sent">Sent</option>
-              <option value="failed">Failed</option>
+            <span data-i18n="field.exchange">Exchange</span>
+            <select id="filter-exchange">
+              <option value="" data-i18n="option.any">Any</option>
+              <option value="binance">Binance</option>
+              <option value="okx">OKX</option>
             </select>
           </label>
           <label>
-            <span>Limit</span>
+            <span data-i18n="field.symbol">Symbol</span>
+            <input id="filter-symbol" type="text" placeholder="BTCUSDT">
+          </label>
+          <label>
+            <span data-i18n="field.eventType">Event Type</span>
+            <input id="filter-event-type" type="text" placeholder="agg_trade">
+          </label>
+          <label>
+            <span data-i18n="field.ruleType">Rule Type</span>
+            <input id="filter-rule-type" type="text" placeholder="large_trade">
+          </label>
+          <label>
+            <span data-i18n="field.status">Status</span>
+            <select id="filter-status">
+              <option value="" data-i18n="option.any">Any</option>
+              <option value="sent" data-i18n="status.sent">Sent</option>
+              <option value="failed" data-i18n="status.failed">Failed</option>
+            </select>
+          </label>
+          <label>
+            <span data-i18n="field.limit">Limit</span>
             <input id="filter-limit" type="number" min="1" max="200" value="8">
           </label>
         </div>
-        <button id="reload-button" class="primary-button">Reload</button>
+        <button id="reload-button" class="primary-button" data-i18n="action.reload">Reload</button>
       </aside>
       <main class="content">
         <section class="hero">
           <div>
-            <p class="eyebrow">Monitoring Console</p>
-            <h2>Binance anomaly operations</h2>
+            <p class="eyebrow" data-i18n="hero.eyebrow">Monitoring Console</p>
+            <h2 data-i18n="hero.title">Exchange anomaly operations</h2>
           </div>
-          <p id="status-text" class="muted">Ready.</p>
+          <p id="status-text" class="muted" data-i18n="status.ready">Ready.</p>
         </section>
         <section class="metrics" id="overview-grid"></section>
         <section class="panel">
           <div class="panel-header">
-            <h3>Runtime Status</h3>
+            <h3 data-i18n="panel.runtime">Runtime Status</h3>
           </div>
           <div id="runtime-status" class="status-grid"></div>
         </section>
         <section class="panel">
           <div class="panel-header">
-            <h3>Trend Summary</h3>
+            <h3 data-i18n="panel.trends">Trend Summary</h3>
           </div>
           <div id="trend-grid" class="metrics compact"></div>
           <div id="symbol-trends" class="table"></div>
         </section>
         <section class="panel">
           <div class="panel-header">
-            <h3>Rule Editor</h3>
+            <h3 data-i18n="panel.ruleEditor">Rule Editor</h3>
           </div>
           <form id="rule-form" class="rule-form">
             <label>
-              <span>Symbol</span>
+              <span data-i18n="field.exchange">Exchange</span>
+              <select id="rule-exchange">
+                <option value="binance">Binance</option>
+                <option value="okx">OKX</option>
+              </select>
+            </label>
+            <label>
+              <span data-i18n="field.symbol">Symbol</span>
               <input id="rule-symbol" type="text" placeholder="BTCUSDT" required>
             </label>
             <label>
-              <span>Rule Type</span>
+              <span data-i18n="field.ruleType">Rule Type</span>
               <select id="rule-type">
                 <option value="large_trade">large_trade</option>
                 <option value="large_trade_window">large_trade_window</option>
@@ -87,41 +109,41 @@
               </select>
             </label>
             <label>
-              <span>Threshold</span>
+              <span data-i18n="field.threshold">Threshold</span>
               <input id="rule-threshold" type="number" min="0" step="0.0001" required>
             </label>
             <label>
-              <span>Window Sec</span>
+              <span data-i18n="field.windowSec">Window Sec</span>
               <input id="rule-window-sec" type="number" min="1" value="60">
             </label>
             <label class="checkbox-label">
               <input id="rule-enabled" type="checkbox" checked>
-              <span>Enabled</span>
+              <span data-i18n="field.enabled">Enabled</span>
             </label>
-            <button class="primary-button inline" type="submit">Save Rule</button>
+            <button class="primary-button inline" type="submit" data-i18n="action.saveRule">Save Rule</button>
           </form>
         </section>
         <section class="panel">
           <div class="panel-header">
-            <h3>Rules</h3>
+            <h3 data-i18n="panel.rules">Rules</h3>
           </div>
           <div id="rules-table" class="table"></div>
         </section>
         <section class="panel">
           <div class="panel-header">
-            <h3>Alerts</h3>
+            <h3 data-i18n="panel.alerts">Alerts</h3>
           </div>
           <div id="alerts-table" class="table"></div>
         </section>
         <section class="panel">
           <div class="panel-header">
-            <h3>Alert Events</h3>
+            <h3 data-i18n="panel.events">Alert Events</h3>
           </div>
           <div id="events-table" class="table"></div>
         </section>
         <section class="panel">
           <div class="panel-header">
-            <h3>Notifications</h3>
+            <h3 data-i18n="panel.notifications">Notifications</h3>
           </div>
           <div id="notifications-table" class="table"></div>
         </section>

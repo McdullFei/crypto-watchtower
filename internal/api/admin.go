@@ -25,7 +25,7 @@ type AdminOverview struct {
 
 // AdminTrends contains lightweight 24-hour operational trend counters.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 type AdminTrends struct {
 	Alerts24h        int64                  `json:"alerts_24h"`
@@ -35,7 +35,7 @@ type AdminTrends struct {
 
 // AdminNotificationTrend counts notification outcomes for the trend summary.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 type AdminNotificationTrend struct {
 	Sent   int64 `json:"sent"`
@@ -44,7 +44,7 @@ type AdminNotificationTrend struct {
 
 // AdminSymbolCount contains a compact symbol-to-count aggregate.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 type AdminSymbolCount struct {
 	Symbol string `json:"symbol"`
@@ -52,6 +52,7 @@ type AdminSymbolCount struct {
 }
 
 type AdminListFilter struct {
+	Exchange  string
 	Symbol    string
 	RuleType  string
 	EventType string
@@ -70,9 +71,9 @@ type AdminService interface {
 
 // mountAdminRoutes attaches the operator console static files and protected Admin APIs.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
-// modified by __AUTHOR__ on 2026-06-29
+// modified by monsterfei on 2026-06-29
 func mountAdminRoutes(mux *http.ServeMux, deps Dependencies) {
 	mux.Handle("/admin", adminIndexHandler())
 	mux.Handle("/admin/", adminFileHandler())
@@ -157,6 +158,7 @@ func handleAdminRequest(w http.ResponseWriter, r *http.Request, deps Dependencie
 func adminFilterFromRequest(r *http.Request) AdminListFilter {
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	return AdminListFilter{
+		Exchange:  r.URL.Query().Get("exchange"),
 		Symbol:    r.URL.Query().Get("symbol"),
 		RuleType:  r.URL.Query().Get("rule_type"),
 		EventType: r.URL.Query().Get("event_type"),

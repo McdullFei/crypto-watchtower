@@ -73,7 +73,7 @@ func main() {
 		os.Exit(1)
 	}
 	adminService := admin.NewService(repos)
-	pipeline := rule.NewPipeline(engine, repos, redisClient, tg)
+	pipeline := rule.NewPipeline(engine, repos, redisClient, buildNotificationSenders(cfg, tg)...)
 
 	go func() {
 		sub := bus.Subscribe(ctx)
@@ -84,30 +84,40 @@ func main() {
 		}
 	}()
 
-	spotCollector := collector.NewBinanceWSCollector(collector.MarketTypeSpot, cfg.Binance.SpotWSBaseURL, bus)
-	futuresCollector := collector.NewBinanceWSCollector(collector.MarketTypeFutures, cfg.Binance.FuturesWSBaseURL, bus)
-	if err := spotCollector.Subscribe(cfg.Binance.Symbols); err != nil {
-		slog.Error("subscribe spot collector", "err", err)
-		os.Exit(1)
-	}
-	if err := futuresCollector.Subscribe(cfg.Binance.Symbols); err != nil {
-		slog.Error("subscribe futures collector", "err", err)
-		os.Exit(1)
-	}
-	go func() {
-		if err := spotCollector.Start(ctx); err != nil && ctx.Err() == nil {
-			slog.Error("spot collector stopped", "err", err)
+	okxInstruments := collector.NewOKXInstrumentStore(nil)
+	if cfg.OKX.Enabled {
+		fetcher := collector.NewOKXInstrumentFetcher(cfg.OKX.RestBaseURL, nil)
+		spotInstruments, err := fetcher.Fetch(ctx, "SPOT")
+		if err != nil {
+			slog.Error("load okx spot instruments", "err", err)
+			os.Exit(1)
 		}
-	}()
-	go func() {
-		if err := futuresCollector.Start(ctx); err != nil && ctx.Err() == nil {
-			slog.Error("futures collector stopped", "err", err)
+		swapInstruments, err := fetcher.Fetch(ctx, "SWAP")
+		if err != nil {
+			slog.Error("load okx swap instruments", "err", err)
+			os.Exit(1)
 		}
-	}()
+		okxInstruments = collector.NewOKXInstrumentStore(append(spotInstruments, swapInstruments...))
+	}
 
-	fundingFetcher := collector.NewFundingFetcher(cfg.Binance.FuturesRESTBaseURL, cfg.Binance.Symbols, bus)
-	fundingJob := scheduler.NewFundingJob(fundingFetcher, time.Duration(cfg.Scheduler.FundingIntervalSec)*time.Second)
-	go fundingJob.Start(ctx)
+	marketCollectors, err := buildMarketCollectors(cfg, bus, okxInstruments)
+	if err != nil {
+		slog.Error("build market collectors", "err", err)
+		os.Exit(1)
+	}
+	for _, marketCollector := range marketCollectors {
+		go func(marketCollector runtimeCollector) {
+			if err := marketCollector.Start(ctx); err != nil && ctx.Err() == nil {
+				slog.Error("collector stopped", "name", marketCollector.Name(), "err", err)
+			}
+		}(marketCollector)
+	}
+
+	if cfg.Binance.Enabled {
+		fundingFetcher := collector.NewFundingFetcher(cfg.Binance.FuturesRESTBaseURL, cfg.Binance.Symbols, bus)
+		fundingJob := scheduler.NewFundingJob(fundingFetcher, time.Duration(cfg.Scheduler.FundingIntervalSec)*time.Second)
+		go fundingJob.Start(ctx)
+	}
 
 	if cfg.Telegram.Enabled && cfg.Telegram.Mode == "polling" {
 		poller := notifier.NewTelegramPoller(
@@ -132,15 +142,12 @@ func main() {
 
 	router := api.NewRouter(api.Dependencies{
 		APIBearerToken: cfg.API.BearerToken,
-		Symbols:        cfg.Binance.Symbols,
+		Symbols:        runtimeSymbols(cfg),
 		RuleConfig:     cfg.Rules,
 		Rules:          ruleService,
 		Admin:          adminService,
 		Telegram:       tg,
-		Collectors: []api.CollectorStatusProvider{
-			collectorHealthAdapter{collector: spotCollector},
-			collectorHealthAdapter{collector: futuresCollector},
-		},
+		Collectors:     collectorHealthAdapters(marketCollectors),
 		Dependencies: []api.DependencyStatusProvider{
 			dependencyHealthAdapter{name: "postgres", check: postgres.Ping},
 			dependencyHealthAdapter{name: "redis", check: func(ctx context.Context) error {
@@ -170,6 +177,96 @@ func main() {
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		slog.Error("http server shutdown", "err", err)
 	}
+}
+
+// runtimeCollector is the common runtime surface for exchange collectors.
+//
+// Author: monsterfei
+// Date: 2026-06-29
+type runtimeCollector interface {
+	Name() string
+	Start(context.Context) error
+	Subscribe([]string) error
+	Status() collector.Status
+}
+
+// buildMarketCollectors creates subscribed market collectors from runtime config.
+//
+// Author: monsterfei
+// Date: 2026-06-29
+func buildMarketCollectors(cfg config.Config, bus *eventbus.Bus, okxInstruments collector.OKXInstrumentStore) ([]runtimeCollector, error) {
+	collectors := make([]runtimeCollector, 0, 3)
+	if cfg.Binance.Enabled {
+		spotCollector := collector.NewBinanceWSCollector(collector.MarketTypeSpot, cfg.Binance.SpotWSBaseURL, bus)
+		futuresCollector := collector.NewBinanceWSCollector(collector.MarketTypeFutures, cfg.Binance.FuturesWSBaseURL, bus)
+		if err := spotCollector.Subscribe(cfg.Binance.Symbols); err != nil {
+			return nil, err
+		}
+		if err := futuresCollector.Subscribe(cfg.Binance.Symbols); err != nil {
+			return nil, err
+		}
+		collectors = append(collectors, spotCollector, futuresCollector)
+	}
+
+	if cfg.OKX.Enabled {
+		okxCollector := collector.NewOKXWSCollector(cfg.OKX.PublicWSBaseURL, bus, okxInstruments)
+		if err := okxCollector.Subscribe(cfg.OKX.Symbols); err != nil {
+			return nil, err
+		}
+		collectors = append(collectors, okxCollector)
+	}
+	return collectors, nil
+}
+
+// runtimeSymbols returns enabled exchange symbols for default rule API forms.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-29
+// @param cfg Runtime configuration.
+// @returns Compact symbols from enabled exchanges.
+func runtimeSymbols(cfg config.Config) []string {
+	symbols := make([]string, 0, len(cfg.Binance.Symbols)+len(cfg.OKX.Symbols))
+	if cfg.Binance.Enabled {
+		symbols = append(symbols, cfg.Binance.Symbols...)
+	}
+	if cfg.OKX.Enabled {
+		symbols = append(symbols, cfg.OKX.Symbols...)
+	}
+	return symbols
+}
+
+// buildNotificationSenders creates enabled notification senders from runtime config.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-29
+// @param cfg Runtime configuration.
+// @param telegram Existing Telegram sender.
+// @returns Channel-aware senders for the alert pipeline.
+func buildNotificationSenders(cfg config.Config, telegram rule.Sender) []rule.NamedSender {
+	senders := make([]rule.NamedSender, 0, 2)
+	if cfg.Telegram.Enabled {
+		senders = append(senders, rule.NewNamedSender("telegram", "default", telegram))
+	}
+	if cfg.Webhook.Enabled {
+		channel := cfg.Webhook.Channel
+		webhook := notifier.NewWebhookNotifier(cfg.Webhook.URL, channel, &http.Client{
+			Timeout: time.Duration(cfg.Webhook.TimeoutSec) * time.Second,
+		})
+		senders = append(senders, rule.NewNamedSender(channel, cfg.Webhook.URL, webhook))
+	}
+	return senders
+}
+
+// collectorHealthAdapters converts runtime collectors to API health providers.
+//
+// Author: monsterfei
+// Date: 2026-06-29
+func collectorHealthAdapters(collectors []runtimeCollector) []api.CollectorStatusProvider {
+	adapters := make([]api.CollectorStatusProvider, 0, len(collectors))
+	for _, marketCollector := range collectors {
+		adapters = append(adapters, collectorHealthAdapter{collector: marketCollector})
+	}
+	return adapters
 }
 
 type collectorHealthAdapter struct {
