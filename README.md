@@ -36,6 +36,12 @@ CryptoWatchtower 是一个基于 Go 的实时币圈异动监控平台。当前�
 - 后台事件列表当前展示的是“告警相关事件”，不是 Binance 全量市场事件流
 - 运营后台已包含运行状态、exchange/symbol/list 过滤、系统规则编辑和 24 小时趋势摘要
 
+## Documentation
+
+- [技术方案](docs/币圈异动监控平台技术方案.md)
+- [用户手册](docs/用户手册.md)
+- [总体开发计划](docs/plan/币圈异动监控平台总体开发计划.md)
+
 ## Architecture
 
 ```text
@@ -101,6 +107,16 @@ configs/config.example.yaml
 | `webhook.url` | Webhook endpoint URL |
 | `webhook.channel` | Notification log channel name, defaults to `discord` |
 | `webhook.timeout_sec` | Webhook HTTP timeout in seconds |
+| `summary.enabled` | Enable optional 15-minute AI market summary job; defaults to `false` |
+| `summary.interval_sec` | Summary job interval in seconds; defaults to `900` |
+| `summary.window_sec` | Summary data window in seconds; defaults to `900` |
+| `summary.max_items` | Maximum sampled alerts/events read per summary window; defaults to `50` |
+| `summary.provider` | Summary provider, `template` for local deterministic output or `openai_compatible` for HTTP chat completions |
+| `summary.disclaimer` | Required disclaimer appended to summaries; defaults to `不构成投资建议` |
+| `summary.api_base_url` | OpenAI-compatible API base URL when `summary.provider=openai_compatible` |
+| `summary.api_key` | OpenAI-compatible API key; supply through env and never commit real keys |
+| `summary.model` | OpenAI-compatible model name |
+| `summary.timeout_sec` | OpenAI-compatible request timeout in seconds; defaults to `15` |
 | `postgres.dsn` | PostgreSQL DSN |
 | `redis.addr` | Redis address |
 | `telegram.bot_token` | Telegram Bot token |
@@ -124,9 +140,21 @@ CW_WEBHOOK_ENABLED="false"
 CW_WEBHOOK_URL="https://discord.com/api/webhooks/..."
 CW_WEBHOOK_CHANNEL="discord"
 CW_WEBHOOK_TIMEOUT_SEC="10"
+CW_SUMMARY_ENABLED="false"
+CW_SUMMARY_INTERVAL_SEC="900"
+CW_SUMMARY_WINDOW_SEC="900"
+CW_SUMMARY_MAX_ITEMS="50"
+CW_SUMMARY_PROVIDER="template"
+CW_SUMMARY_DISCLAIMER="不构成投资建议"
+CW_SUMMARY_API_BASE_URL=""
+CW_SUMMARY_API_KEY=""
+CW_SUMMARY_MODEL=""
+CW_SUMMARY_TIMEOUT_SEC="15"
 ```
 
 Discord / Webhook 通知默认关闭。开启后会复用现有告警链路，并在 `notification_logs` 中按 `channel`、`target`、`status`、`error_message` 记录每个渠道的投递结果。
+
+AI 市场摘要默认关闭。开启 `CW_SUMMARY_ENABLED=true` 后，服务会每 15 分钟从已落库的 `alerts` 和 `market_events` 中读取有界样本，生成包含 `不构成投资建议` 的摘要并写入 `market_summaries`。本地验证建议使用 `CW_SUMMARY_PROVIDER=template`；生产如使用 `openai_compatible`，请通过 `CW_SUMMARY_API_BASE_URL`、`CW_SUMMARY_API_KEY`、`CW_SUMMARY_MODEL` 注入供应商信息，真实 API Key 禁止提交到仓库。
 
 ## Run With Docker Compose
 

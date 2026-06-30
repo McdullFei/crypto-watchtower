@@ -19,6 +19,7 @@ import (
 	"github.com/renfei198727/crypto-watchtower/internal/rule"
 	"github.com/renfei198727/crypto-watchtower/internal/scheduler"
 	"github.com/renfei198727/crypto-watchtower/internal/storage"
+	"github.com/renfei198727/crypto-watchtower/internal/summary"
 )
 
 func main() {
@@ -117,6 +118,12 @@ func main() {
 		fundingFetcher := collector.NewFundingFetcher(cfg.Binance.FuturesRESTBaseURL, cfg.Binance.Symbols, bus)
 		fundingJob := scheduler.NewFundingJob(fundingFetcher, time.Duration(cfg.Scheduler.FundingIntervalSec)*time.Second)
 		go fundingJob.Start(ctx)
+	}
+
+	if cfg.Summary.Enabled {
+		summaryService := buildSummaryService(cfg, repos)
+		summaryJob := scheduler.NewSummaryJob(summaryService, time.Duration(cfg.Summary.IntervalSec)*time.Second)
+		go summaryJob.Start(ctx)
 	}
 
 	if cfg.Telegram.Enabled && cfg.Telegram.Mode == "polling" {
@@ -220,7 +227,7 @@ func buildMarketCollectors(cfg config.Config, bus *eventbus.Bus, okxInstruments 
 
 // runtimeSymbols returns enabled exchange symbols for default rule API forms.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 // @param cfg Runtime configuration.
 // @returns Compact symbols from enabled exchanges.
@@ -237,7 +244,7 @@ func runtimeSymbols(cfg config.Config) []string {
 
 // buildNotificationSenders creates enabled notification senders from runtime config.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 // @param cfg Runtime configuration.
 // @param telegram Existing Telegram sender.
@@ -255,6 +262,34 @@ func buildNotificationSenders(cfg config.Config, telegram rule.Sender) []rule.Na
 		senders = append(senders, rule.NewNamedSender(channel, cfg.Webhook.URL, webhook))
 	}
 	return senders
+}
+
+// buildSummaryService creates the optional AI market summary service from runtime config.
+//
+// Author: monsterfei
+// Date: 2026-06-30
+// @param cfg Runtime configuration.
+// @param repos Storage repositories.
+// @returns Summary service wired with bounded aggregation and configured generator.
+func buildSummaryService(cfg config.Config, repos *storage.Repositories) summary.Service {
+	aggregator := summary.NewAggregator(repos.Alerts, repos.MarketEvents, summary.Config{MaxItems: cfg.Summary.MaxItems})
+	var generator summary.Generator = summary.NewTemplateGenerator(cfg.Summary.Disclaimer)
+	if cfg.Summary.Provider == "openai_compatible" {
+		generator = summary.NewOpenAICompatibleGenerator(summary.OpenAICompatibleConfig{
+			BaseURL:    cfg.Summary.APIBaseURL,
+			APIKey:     cfg.Summary.APIKey,
+			Model:      cfg.Summary.Model,
+			TimeoutSec: cfg.Summary.TimeoutSec,
+			Disclaimer: cfg.Summary.Disclaimer,
+		}, nil)
+	}
+	return summary.Service{
+		Aggregator: aggregator,
+		Generator:  generator,
+		Store:      repos.MarketSummaries,
+		Provider:   cfg.Summary.Provider,
+		Window:     time.Duration(cfg.Summary.WindowSec) * time.Second,
+	}
 }
 
 // collectorHealthAdapters converts runtime collectors to API health providers.

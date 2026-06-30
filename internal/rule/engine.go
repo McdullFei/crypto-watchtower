@@ -109,7 +109,7 @@ type Sender interface {
 
 // NamedSender wraps one notification sender with log metadata.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 type NamedSender interface {
 	Name() string
@@ -125,7 +125,7 @@ type namedSender struct {
 
 // NewNamedSender adds channel metadata to a sender without changing its send behavior.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 // @param name Notification channel name.
 // @param target Notification target identifier.
@@ -168,6 +168,13 @@ func NewPipeline(engine Evaluator, repos pipelineRepositories, redis redis.Unive
 	return Pipeline{engine: engine, repos: repos, redis: redis, senders: senders}
 }
 
+// HandleEvent evaluates one market event and records alert delivery results for every configured sender.
+//
+// Author: monsterfei
+// Date: 2026-06-30
+// @param ctx Request context.
+// @param event Market event to evaluate.
+// @returns Error when persistence, deduplication, or at least one sender fails.
 func (p Pipeline) HandleEvent(ctx context.Context, event model.MarketEvent) error {
 	alerts := p.engine.Evaluate(event)
 	for _, alert := range alerts {
@@ -185,13 +192,17 @@ func (p Pipeline) HandleEvent(ctx context.Context, event model.MarketEvent) erro
 		if err := p.repos.InsertAlert(ctx, alert); err != nil {
 			return fmt.Errorf("insert alert: %w", err)
 		}
+		var firstSendErr error
 		for _, sender := range p.senders {
-			sendErr := sender.Send(ctx, alert)
+			currentSendErr := sender.Send(ctx, alert)
 			logStatus := "sent"
 			logMessage := ""
-			if sendErr != nil {
+			if currentSendErr != nil {
 				logStatus = "failed"
-				logMessage = sendErr.Error()
+				logMessage = currentSendErr.Error()
+				if firstSendErr == nil {
+					firstSendErr = currentSendErr
+				}
 			}
 			if err := p.repos.InsertNotificationLog(ctx, model.NotificationLog{
 				AlertID:      alert.ID,
@@ -203,9 +214,9 @@ func (p Pipeline) HandleEvent(ctx context.Context, event model.MarketEvent) erro
 			}); err != nil {
 				return fmt.Errorf("insert notification log: %w", err)
 			}
-			if sendErr != nil {
-				return sendErr
-			}
+		}
+		if firstSendErr != nil {
+			return firstSendErr
 		}
 	}
 	return nil

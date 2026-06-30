@@ -34,6 +34,11 @@ func (r MarketEventRepo) Insert(ctx context.Context, event model.MarketEvent) er
 	return err
 }
 
+// List returns market events matching the provided bounded filter.
+//
+// Author: monsterfei
+// Date: 2026-06-30
+// modified by monsterfei on 2026-06-30
 func (r MarketEventRepo) List(ctx context.Context, filter ListFilter) ([]model.MarketEvent, error) {
 	query := `
 		SELECT event_id, exchange, market_type, symbol, event_type, side, price, quantity, notional, metadata, event_time, created_at
@@ -52,6 +57,10 @@ func (r MarketEventRepo) List(ctx context.Context, filter ListFilter) ([]model.M
 	if filter.EventType != "" {
 		args = append(args, filter.EventType)
 		query += fmt.Sprintf(" AND event_type = $%d", len(args))
+	}
+	if !filter.Since.IsZero() {
+		args = append(args, filter.Since)
+		query += fmt.Sprintf(" AND event_time >= $%d", len(args))
 	}
 	query += " ORDER BY event_time DESC"
 	args = append(args, normalizedLimit(filter.Limit))

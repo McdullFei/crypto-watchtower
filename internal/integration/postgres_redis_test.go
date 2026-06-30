@@ -147,6 +147,26 @@ func TestPostgresRedisRepositoriesExerciseRealDependencies(t *testing.T) {
 		t.Fatalf("expected notification log for %s, got %+v", alertID, logs)
 	}
 
+	summaryID := "summary-" + suffix
+	if err := repos.MarketSummaries.Insert(ctx, model.MarketSummary{
+		ID:         summaryID,
+		WindowFrom: now.Add(-15 * time.Minute),
+		WindowTo:   now,
+		Provider:   "template",
+		Status:     "generated",
+		Content:    "BTCUSDT 异动摘要。不构成投资建议",
+		CreatedAt:  now,
+	}); err != nil {
+		t.Fatalf("insert market summary: %v", err)
+	}
+	summaries, err := repos.MarketSummaries.List(ctx, storage.ListFilter{Limit: 1})
+	if err != nil {
+		t.Fatalf("list market summaries: %v", err)
+	}
+	if len(summaries) != 1 || summaries[0].ID != summaryID || summaries[0].Status != "generated" {
+		t.Fatalf("unexpected market summaries: %+v", summaries)
+	}
+
 	key := "integration:dedupe:" + suffix
 	set, err := redisClient.SetNX(ctx, key, "1", time.Minute).Result()
 	if err != nil {

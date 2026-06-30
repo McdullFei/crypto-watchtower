@@ -8,6 +8,7 @@ import (
 	"github.com/renfei198727/crypto-watchtower/internal/config"
 	"github.com/renfei198727/crypto-watchtower/internal/eventbus"
 	"github.com/renfei198727/crypto-watchtower/internal/model"
+	"github.com/renfei198727/crypto-watchtower/internal/storage"
 )
 
 // TestBuildMarketCollectorsIncludesOKXWhenEnabled verifies runtime collector wiring.
@@ -54,7 +55,7 @@ func TestBuildMarketCollectorsSkipsOKXWhenDisabled(t *testing.T) {
 
 // TestBuildMarketCollectorsAllowsOKXOnly verifies Binance can be disabled for OKX-only smoke.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 func TestBuildMarketCollectorsAllowsOKXOnly(t *testing.T) {
 	cfg := validServerConfig()
@@ -80,7 +81,7 @@ func TestBuildMarketCollectorsAllowsOKXOnly(t *testing.T) {
 
 // TestBuildNotificationSendersAddsWebhookWhenEnabled verifies optional webhook runtime wiring.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 func TestBuildNotificationSendersAddsWebhookWhenEnabled(t *testing.T) {
 	cfg := validServerConfig()
@@ -100,6 +101,48 @@ func TestBuildNotificationSendersAddsWebhookWhenEnabled(t *testing.T) {
 	}
 	if senders[1].Name() != "discord" || senders[1].Target() != "https://discord.example/webhook" {
 		t.Fatalf("unexpected webhook sender: %s %s", senders[1].Name(), senders[1].Target())
+	}
+}
+
+// TestBuildSummaryServiceUsesTemplateProvider verifies local summary provider wiring.
+//
+// Author: monsterfei
+// Date: 2026-06-30
+func TestBuildSummaryServiceUsesTemplateProvider(t *testing.T) {
+	cfg := validServerConfig()
+	cfg.Summary.Enabled = true
+	cfg.Summary.Provider = "template"
+	cfg.Summary.Disclaimer = "不构成投资建议"
+	cfg.Summary.WindowSec = 900
+	cfg.Summary.MaxItems = 50
+
+	service := buildSummaryService(cfg, &storage.Repositories{})
+
+	if service.Generator == nil || service.Store == nil {
+		t.Fatalf("expected summary service to be wired, got %+v", service)
+	}
+}
+
+// TestBuildSummaryServiceUsesOpenAICompatibleProvider verifies HTTP provider wiring.
+//
+// Author: monsterfei
+// Date: 2026-06-30
+func TestBuildSummaryServiceUsesOpenAICompatibleProvider(t *testing.T) {
+	cfg := validServerConfig()
+	cfg.Summary.Enabled = true
+	cfg.Summary.Provider = "openai_compatible"
+	cfg.Summary.Disclaimer = "不构成投资建议"
+	cfg.Summary.APIBaseURL = "https://api.example.test/v1"
+	cfg.Summary.APIKey = "summary-key"
+	cfg.Summary.Model = "summary-model"
+	cfg.Summary.TimeoutSec = 8
+	cfg.Summary.WindowSec = 900
+	cfg.Summary.MaxItems = 50
+
+	service := buildSummaryService(cfg, &storage.Repositories{})
+
+	if service.Generator == nil || service.Store == nil {
+		t.Fatalf("expected summary service to be wired, got %+v", service)
 	}
 }
 

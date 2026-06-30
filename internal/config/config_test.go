@@ -171,7 +171,7 @@ func TestLoadAppliesOKXEnvOverrides(t *testing.T) {
 
 // TestLoadAllowsBinanceDisabledForOKXOnly verifies OKX-only smoke can disable Binance requirements.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 func TestLoadAllowsBinanceDisabledForOKXOnly(t *testing.T) {
 	dir := t.TempDir()
@@ -210,7 +210,7 @@ func TestLoadAllowsBinanceDisabledForOKXOnly(t *testing.T) {
 
 // TestLoadAppliesWebhookEnvOverrides verifies Discord/Webhook runtime settings can come from env.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 func TestLoadAppliesWebhookEnvOverrides(t *testing.T) {
 	dir := t.TempDir()
@@ -246,6 +246,53 @@ func TestLoadAppliesWebhookEnvOverrides(t *testing.T) {
 	}
 	if !cfg.Webhook.Enabled || cfg.Webhook.URL != "https://discord.example/webhook" || cfg.Webhook.Channel != "discord" || cfg.Webhook.TimeoutSec != 7 {
 		t.Fatalf("unexpected webhook config: %+v", cfg.Webhook)
+	}
+}
+
+// TestLoadAppliesSummaryEnvOverrides verifies AI summary runtime settings can come from env.
+//
+// Author: monsterfei
+// Date: 2026-06-30
+func TestLoadAppliesSummaryEnvOverrides(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	content := []byte("" +
+		"binance:\n" +
+		"  enabled: false\n" +
+		"okx:\n" +
+		"  enabled: true\n" +
+		"  public_ws_base_url: wss://example/ws\n" +
+		"  rest_base_url: https://example.test\n" +
+		"  symbols: [BTCUSDT]\n" +
+		"postgres:\n" +
+		"  dsn: postgres://from-file\n" +
+		"redis:\n" +
+		"  addr: localhost:6379\n" +
+		"telegram:\n" +
+		"  enabled: false\n" +
+		"api:\n" +
+		"  bearer_token: file-token\n")
+	if err := os.WriteFile(path, content, 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	t.Setenv("CW_SUMMARY_ENABLED", "true")
+	t.Setenv("CW_SUMMARY_INTERVAL_SEC", "900")
+	t.Setenv("CW_SUMMARY_WINDOW_SEC", "900")
+	t.Setenv("CW_SUMMARY_MAX_ITEMS", "40")
+	t.Setenv("CW_SUMMARY_PROVIDER", "template")
+	t.Setenv("CW_SUMMARY_DISCLAIMER", "不构成投资建议")
+	t.Setenv("CW_SUMMARY_API_BASE_URL", "https://api.example.test/v1")
+	t.Setenv("CW_SUMMARY_API_KEY", "summary-key")
+	t.Setenv("CW_SUMMARY_MODEL", "summary-model")
+	t.Setenv("CW_SUMMARY_TIMEOUT_SEC", "8")
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+	if !cfg.Summary.Enabled || cfg.Summary.IntervalSec != 900 || cfg.Summary.WindowSec != 900 || cfg.Summary.MaxItems != 40 || cfg.Summary.Provider != "template" || cfg.Summary.Disclaimer != "不构成投资建议" || cfg.Summary.APIBaseURL != "https://api.example.test/v1" || cfg.Summary.APIKey != "summary-key" || cfg.Summary.Model != "summary-model" || cfg.Summary.TimeoutSec != 8 {
+		t.Fatalf("unexpected summary config: %+v", cfg.Summary)
 	}
 }
 

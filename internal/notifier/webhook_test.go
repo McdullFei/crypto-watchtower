@@ -13,7 +13,7 @@ import (
 
 // TestWebhookNotifierSendsFormattedAlert verifies webhook payloads contain formatted alerts.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 func TestWebhookNotifierSendsFormattedAlert(t *testing.T) {
 	var payload struct {
@@ -48,7 +48,7 @@ func TestWebhookNotifierSendsFormattedAlert(t *testing.T) {
 
 // TestWebhookNotifierReturnsErrorOnNon2xx verifies failed webhook responses are surfaced.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 func TestWebhookNotifierReturnsErrorOnNon2xx(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

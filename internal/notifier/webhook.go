@@ -14,7 +14,7 @@ import (
 
 // WebhookNotifier sends formatted alerts to a Discord-compatible JSON webhook.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 type WebhookNotifier struct {
 	URL     string
@@ -24,7 +24,7 @@ type WebhookNotifier struct {
 
 // NewWebhookNotifier creates a JSON webhook sender.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 // @param url Webhook endpoint URL.
 // @param channel Notification channel name used by callers.
@@ -46,7 +46,7 @@ func NewWebhookNotifier(url string, channel string, client *http.Client) Webhook
 
 // Send posts one formatted alert to the webhook endpoint.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 // @param ctx Request context.
 // @param alert Alert payload to format and send.

@@ -10,15 +10,22 @@ import (
 
 type Repositories struct {
 	MarketEvents     MarketEventRepo
+	MarketSummaries  MarketSummaryRepo
 	AlertRules       AlertRuleRepo
 	Alerts           AlertRepo
 	NotificationLogs NotificationLogRepo
 	Users            UserRepo
 }
 
+// NewRepositories creates repository handles backed by one PostgreSQL pool.
+//
+// Author: monsterfei
+// Date: 2026-06-30
+// modified by monsterfei on 2026-06-30
 func NewRepositories(db *pgxpool.Pool) *Repositories {
 	return &Repositories{
 		MarketEvents:     MarketEventRepo{DB: db},
+		MarketSummaries:  MarketSummaryRepo{DB: db},
 		AlertRules:       AlertRuleRepo{DB: db},
 		Alerts:           AlertRepo{DB: db},
 		NotificationLogs: NotificationLogRepo{DB: db},
@@ -28,7 +35,7 @@ func NewRepositories(db *pgxpool.Pool) *Repositories {
 
 // InsertMarketEvent stores one alert-related market event through the repository set.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 // @param ctx Request context.
 // @param event Market event to persist.
@@ -39,7 +46,7 @@ func (r *Repositories) InsertMarketEvent(ctx context.Context, event model.Market
 
 // InsertAlert stores one generated alert through the repository set.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 // @param ctx Request context.
 // @param alert Alert to persist.
@@ -50,7 +57,7 @@ func (r *Repositories) InsertAlert(ctx context.Context, alert model.Alert) error
 
 // InsertNotificationLog stores one notification delivery result through the repository set.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 // @param ctx Request context.
 // @param log Notification log to persist.

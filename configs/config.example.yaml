@@ -30,6 +30,18 @@ webhook:
   channel: "discord"
   timeout_sec: 10
 
+summary:
+  enabled: false
+  interval_sec: 900
+  window_sec: 900
+  max_items: 50
+  provider: "template"
+  disclaimer: "不构成投资建议"
+  api_base_url: ""
+  api_key: ""
+  model: ""
+  timeout_sec: 15
+
 postgres:
   dsn: "postgres://postgres:postgres@localhost:5432/crypto_watchtower?sslmode=disable"
 

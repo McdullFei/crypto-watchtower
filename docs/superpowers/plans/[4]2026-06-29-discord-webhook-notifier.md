@@ -34,7 +34,7 @@ Add this test to `internal/config/config_test.go`:
 ```go
 // TestLoadAppliesWebhookEnvOverrides verifies Discord/Webhook runtime settings can come from env.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 func TestLoadAppliesWebhookEnvOverrides(t *testing.T) {
 	dir := t.TempDir()
@@ -91,7 +91,7 @@ Add `WebhookConfig` to `internal/config/config.go`:
 ```go
 // WebhookConfig contains optional generic webhook notification settings.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 type WebhookConfig struct {
 	Enabled    bool   `yaml:"enabled"`

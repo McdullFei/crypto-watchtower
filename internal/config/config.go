@@ -18,6 +18,7 @@ type Config struct {
 	Binance  BinanceConfig `yaml:"binance"`
 	OKX      OKXConfig     `yaml:"okx"`
 	Webhook  WebhookConfig `yaml:"webhook"`
+	Summary  SummaryConfig `yaml:"summary"`
 	Postgres struct {
 		DSN string `yaml:"dsn"`
 	} `yaml:"postgres"`
@@ -56,7 +57,7 @@ type RulesConfig struct {
 
 // BinanceConfig contains optional Binance market-data settings.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 type BinanceConfig struct {
 	Enabled            bool     `yaml:"enabled"`
@@ -79,13 +80,30 @@ type OKXConfig struct {
 
 // WebhookConfig contains optional generic webhook notification settings.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-29
 type WebhookConfig struct {
 	Enabled    bool   `yaml:"enabled"`
 	URL        string `yaml:"url"`
 	Channel    string `yaml:"channel"`
 	TimeoutSec int    `yaml:"timeout_sec"`
+}
+
+// SummaryConfig contains optional AI market summary job settings.
+//
+// Author: monsterfei
+// Date: 2026-06-30
+type SummaryConfig struct {
+	Enabled     bool   `yaml:"enabled"`
+	IntervalSec int    `yaml:"interval_sec"`
+	WindowSec   int    `yaml:"window_sec"`
+	MaxItems    int    `yaml:"max_items"`
+	Provider    string `yaml:"provider"`
+	Disclaimer  string `yaml:"disclaimer"`
+	APIBaseURL  string `yaml:"api_base_url"`
+	APIKey      string `yaml:"api_key"`
+	Model       string `yaml:"model"`
+	TimeoutSec  int    `yaml:"timeout_sec"`
 }
 
 func (h HTTPConfig) Address() string {
@@ -115,6 +133,11 @@ func Load(path string) (Config, error) {
 	return cfg, cfg.Validate()
 }
 
+// applyDefaults fills optional configuration defaults.
+//
+// Author: monsterfei
+// Date: 2026-06-30
+// modified by monsterfei on 2026-06-30
 func applyDefaults(cfg *Config) {
 	if cfg.Telegram.ParseMode == "" {
 		cfg.Telegram.ParseMode = "Markdown"
@@ -149,8 +172,31 @@ func applyDefaults(cfg *Config) {
 	if cfg.Webhook.TimeoutSec == 0 {
 		cfg.Webhook.TimeoutSec = 10
 	}
+	if cfg.Summary.IntervalSec == 0 {
+		cfg.Summary.IntervalSec = 900
+	}
+	if cfg.Summary.WindowSec == 0 {
+		cfg.Summary.WindowSec = 900
+	}
+	if cfg.Summary.MaxItems == 0 {
+		cfg.Summary.MaxItems = 50
+	}
+	if cfg.Summary.Provider == "" {
+		cfg.Summary.Provider = "template"
+	}
+	if cfg.Summary.Disclaimer == "" {
+		cfg.Summary.Disclaimer = "不构成投资建议"
+	}
+	if cfg.Summary.TimeoutSec == 0 {
+		cfg.Summary.TimeoutSec = 15
+	}
 }
 
+// applyEnvOverrides replaces configuration values from supported environment variables.
+//
+// Author: monsterfei
+// Date: 2026-06-30
+// modified by monsterfei on 2026-06-30
 func applyEnvOverrides(cfg *Config) {
 	overrideString(&cfg.Telegram.BotToken, "CW_TELEGRAM_BOT_TOKEN")
 	overrideString(&cfg.Telegram.DefaultChatID, "CW_TELEGRAM_DEFAULT_CHAT_ID")
@@ -168,6 +214,12 @@ func applyEnvOverrides(cfg *Config) {
 	overrideString(&cfg.Webhook.URL, "CW_WEBHOOK_URL")
 	overrideString(&cfg.Webhook.Channel, "CW_WEBHOOK_CHANNEL")
 	overrideBool(&cfg.Webhook.Enabled, "CW_WEBHOOK_ENABLED")
+	overrideBool(&cfg.Summary.Enabled, "CW_SUMMARY_ENABLED")
+	overrideString(&cfg.Summary.Provider, "CW_SUMMARY_PROVIDER")
+	overrideString(&cfg.Summary.Disclaimer, "CW_SUMMARY_DISCLAIMER")
+	overrideString(&cfg.Summary.APIBaseURL, "CW_SUMMARY_API_BASE_URL")
+	overrideString(&cfg.Summary.APIKey, "CW_SUMMARY_API_KEY")
+	overrideString(&cfg.Summary.Model, "CW_SUMMARY_MODEL")
 	if value, ok := os.LookupEnv("CW_BINANCE_SYMBOLS"); ok && value != "" {
 		cfg.Binance.Symbols = strings.Split(value, ",")
 	}
@@ -184,11 +236,27 @@ func applyEnvOverrides(cfg *Config) {
 			cfg.Webhook.TimeoutSec = timeoutSec
 		}
 	}
+	overrideInt(&cfg.Summary.IntervalSec, "CW_SUMMARY_INTERVAL_SEC")
+	overrideInt(&cfg.Summary.WindowSec, "CW_SUMMARY_WINDOW_SEC")
+	overrideInt(&cfg.Summary.MaxItems, "CW_SUMMARY_MAX_ITEMS")
+	overrideInt(&cfg.Summary.TimeoutSec, "CW_SUMMARY_TIMEOUT_SEC")
 }
 
 func overrideString(target *string, key string) {
 	if value, ok := os.LookupEnv(key); ok {
 		*target = value
+	}
+}
+
+// overrideInt replaces target when key contains a parseable integer value.
+//
+// Author: monsterfei
+// Date: 2026-06-30
+func overrideInt(target *int, key string) {
+	if value, ok := os.LookupEnv(key); ok && value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil {
+			*target = parsed
+		}
 	}
 }
 
@@ -204,6 +272,11 @@ func overrideBool(target *bool, key string) {
 	}
 }
 
+// Validate checks whether the loaded configuration is usable.
+//
+// Author: monsterfei
+// Date: 2026-06-30
+// modified by monsterfei on 2026-06-30
 func (c Config) Validate() error {
 	if c.Binance.Enabled {
 		if c.Binance.SpotWSBaseURL == "" {
@@ -249,6 +322,37 @@ func (c Config) Validate() error {
 	}
 	if c.Webhook.Enabled && c.Webhook.URL == "" {
 		return errors.New("webhook.url is required when webhook is enabled")
+	}
+	if c.Summary.Enabled {
+		if c.Summary.IntervalSec <= 0 {
+			return errors.New("summary.interval_sec is required when summary is enabled")
+		}
+		if c.Summary.WindowSec <= 0 {
+			return errors.New("summary.window_sec is required when summary is enabled")
+		}
+		if c.Summary.MaxItems <= 0 {
+			return errors.New("summary.max_items is required when summary is enabled")
+		}
+		if c.Summary.Provider == "" {
+			return errors.New("summary.provider is required when summary is enabled")
+		}
+		if c.Summary.Disclaimer == "" {
+			return errors.New("summary.disclaimer is required when summary is enabled")
+		}
+		if c.Summary.Provider == "openai_compatible" {
+			if c.Summary.APIBaseURL == "" {
+				return errors.New("summary.api_base_url is required for openai_compatible provider")
+			}
+			if c.Summary.APIKey == "" {
+				return errors.New("summary.api_key is required for openai_compatible provider")
+			}
+			if c.Summary.Model == "" {
+				return errors.New("summary.model is required for openai_compatible provider")
+			}
+			if c.Summary.TimeoutSec <= 0 {
+				return errors.New("summary.timeout_sec is required for openai_compatible provider")
+			}
+		}
 	}
 	return nil
 }

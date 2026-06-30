@@ -25,6 +25,11 @@ func (r AlertRepo) Insert(ctx context.Context, alert model.Alert) error {
 	return err
 }
 
+// List returns alerts matching the provided bounded filter.
+//
+// Author: monsterfei
+// Date: 2026-06-30
+// modified by monsterfei on 2026-06-30
 func (r AlertRepo) List(ctx context.Context, filter ListFilter) ([]model.Alert, error) {
 	query := `
 		SELECT id, exchange, market_type, symbol, type, severity, title, message, event_id, rule_id, trigger_key, trigger_time, created_at
@@ -43,6 +48,10 @@ func (r AlertRepo) List(ctx context.Context, filter ListFilter) ([]model.Alert, 
 	if filter.RuleType != "" {
 		args = append(args, filter.RuleType)
 		query += fmt.Sprintf(" AND type = $%d", len(args))
+	}
+	if !filter.Since.IsZero() {
+		args = append(args, filter.Since)
+		query += fmt.Sprintf(" AND created_at >= $%d", len(args))
 	}
 	query += " ORDER BY created_at DESC"
 	args = append(args, normalizedLimit(filter.Limit))
