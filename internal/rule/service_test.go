@@ -11,7 +11,10 @@ import (
 type stubRuleRepository struct {
 	enabledRules []model.AlertRule
 	systemRules  []model.AlertRule
+	userRules    []model.AlertRule
+	userCount    int64
 	upserted     []model.AlertRule
+	userUpserted []model.AlertRule
 }
 
 func (s *stubRuleRepository) ListEnabled(context.Context) ([]model.AlertRule, error) {
@@ -22,8 +25,33 @@ func (s *stubRuleRepository) ListSystemRules(context.Context) ([]model.AlertRule
 	return append([]model.AlertRule(nil), s.systemRules...), nil
 }
 
+// ListUserRules returns user-scoped rules for runtime service tests.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-30
+func (s *stubRuleRepository) ListUserRules(context.Context, int64) ([]model.AlertRule, error) {
+	return append([]model.AlertRule(nil), s.userRules...), nil
+}
+
+// CountUserRules returns the configured user rule count for runtime service tests.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func (s *stubRuleRepository) CountUserRules(context.Context, int64) (int64, error) {
+	return s.userCount, nil
+}
+
 func (s *stubRuleRepository) UpsertSystemRule(_ context.Context, rule model.AlertRule) error {
 	s.upserted = append(s.upserted, rule)
+	return nil
+}
+
+// UpsertUserRule stores a user-scoped rule for runtime service tests.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-30
+func (s *stubRuleRepository) UpsertUserRule(_ context.Context, rule model.AlertRule) error {
+	s.userUpserted = append(s.userUpserted, rule)
 	return nil
 }
 
@@ -108,5 +136,51 @@ func TestRuntimeRuleServiceUpsertUpdatesRuntimeEngine(t *testing.T) {
 	}
 	if alerts := engine.Evaluate(baseEvent); len(alerts) != 0 {
 		t.Fatalf("expected runtime engine to honor updated threshold, got %+v", alerts)
+	}
+}
+
+// TestRuntimeRuleServiceUpsertUserRuleDoesNotUpdateSystemEngine verifies user rules stay out of the global engine.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-30
+func TestRuntimeRuleServiceUpsertUserRuleDoesNotUpdateSystemEngine(t *testing.T) {
+	engine := NewEngine(Config{
+		LargeTradeThreshold:  100000,
+		LiquidationThreshold: 100000,
+		FundingAbsThreshold:  2,
+	})
+	repo := &stubRuleRepository{}
+	service := NewRuntimeRuleService(repo, engine)
+	userID := int64(42)
+	event := model.MarketEvent{
+		ID:         "event-user-rule",
+		Exchange:   "binance",
+		MarketType: "spot",
+		Symbol:     "BTCUSDT",
+		EventType:  "agg_trade",
+		Side:       "Aggressive Buy",
+		Price:      100000,
+		Quantity:   1.5,
+		Notional:   150000,
+		EventTime:  time.Now().UTC(),
+	}
+
+	if err := service.UpsertUserRule(context.Background(), model.AlertRule{
+		UserID:    &userID,
+		Scope:     "user",
+		Exchange:  "binance",
+		Symbol:    "BTCUSDT",
+		RuleType:  "large_trade",
+		Threshold: 300000,
+		Enabled:   true,
+	}); err != nil {
+		t.Fatalf("upsert user rule: %v", err)
+	}
+
+	if len(repo.userUpserted) != 1 {
+		t.Fatalf("expected user rule upsert, got %d", len(repo.userUpserted))
+	}
+	if alerts := engine.Evaluate(event); len(alerts) != 1 || alerts[0].Type != "large_trade" {
+		t.Fatalf("expected user rule not to change global engine, got %+v", alerts)
 	}
 }

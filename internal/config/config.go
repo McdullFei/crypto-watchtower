@@ -37,6 +37,7 @@ type Config struct {
 	API struct {
 		BearerToken string `yaml:"bearer_token"`
 	} `yaml:"api"`
+	Auth      AuthConfig  `yaml:"auth"`
 	Rules     RulesConfig `yaml:"rules"`
 	Scheduler struct {
 		FundingIntervalSec int `yaml:"funding_interval_sec"`
@@ -53,6 +54,16 @@ type RulesConfig struct {
 	LargeTradeWindowUSDT float64 `yaml:"large_trade_window_usdt"`
 	LiquidationUSDT      float64 `yaml:"liquidation_usdt"`
 	FundingAbsPercent    float64 `yaml:"funding_abs_percent"`
+}
+
+// AuthConfig contains account-session settings.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+type AuthConfig struct {
+	SessionTTLHours       int  `yaml:"session_ttl_hours"`
+	PasswordResetTTLMin   int  `yaml:"password_reset_ttl_min"`
+	ExposeResetTokenInDev bool `yaml:"expose_reset_token_in_dev"`
 }
 
 // BinanceConfig contains optional Binance market-data settings.
@@ -190,6 +201,12 @@ func applyDefaults(cfg *Config) {
 	if cfg.Summary.TimeoutSec == 0 {
 		cfg.Summary.TimeoutSec = 15
 	}
+	if cfg.Auth.SessionTTLHours == 0 {
+		cfg.Auth.SessionTTLHours = 168
+	}
+	if cfg.Auth.PasswordResetTTLMin == 0 {
+		cfg.Auth.PasswordResetTTLMin = 30
+	}
 }
 
 // applyEnvOverrides replaces configuration values from supported environment variables.
@@ -204,6 +221,9 @@ func applyEnvOverrides(cfg *Config) {
 	overrideString(&cfg.Redis.Addr, "CW_REDIS_ADDR")
 	overrideString(&cfg.Redis.Password, "CW_REDIS_PASSWORD")
 	overrideString(&cfg.API.BearerToken, "CW_API_BEARER_TOKEN")
+	overrideInt(&cfg.Auth.SessionTTLHours, "CW_AUTH_SESSION_TTL_HOURS")
+	overrideInt(&cfg.Auth.PasswordResetTTLMin, "CW_AUTH_PASSWORD_RESET_TTL_MIN")
+	overrideBool(&cfg.Auth.ExposeResetTokenInDev, "CW_AUTH_EXPOSE_RESET_TOKEN_IN_DEV")
 	overrideString(&cfg.Binance.SpotWSBaseURL, "CW_BINANCE_SPOT_WS_BASE_URL")
 	overrideString(&cfg.Binance.FuturesWSBaseURL, "CW_BINANCE_FUTURES_WS_BASE_URL")
 	overrideString(&cfg.Binance.FuturesRESTBaseURL, "CW_BINANCE_FUTURES_REST_BASE_URL")
@@ -300,6 +320,12 @@ func (c Config) Validate() error {
 	}
 	if c.API.BearerToken == "" {
 		return errors.New("api.bearer_token is required")
+	}
+	if c.Auth.SessionTTLHours <= 0 {
+		return errors.New("auth.session_ttl_hours must be greater than 0")
+	}
+	if c.Auth.PasswordResetTTLMin <= 0 {
+		return errors.New("auth.password_reset_ttl_min must be greater than 0")
 	}
 	if c.Telegram.Enabled {
 		if c.Telegram.BotToken == "" {

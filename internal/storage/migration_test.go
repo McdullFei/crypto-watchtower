@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"errors"
+	"os"
 	"strings"
 	"testing"
 )
@@ -50,6 +51,73 @@ func TestMigrationRunnerReturnsExecutionError(t *testing.T) {
 
 	if err := runner.Run(context.Background()); err == nil {
 		t.Fatal("expected migration execution error")
+	}
+}
+
+// TestAuthMigrationAddsSessionAndPasswordTables verifies auth schema changes are present.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-30
+func TestAuthMigrationAddsSessionAndPasswordTables(t *testing.T) {
+	raw, err := os.ReadFile("../../migrations/004_auth_subscription.sql")
+	if err != nil {
+		t.Fatalf("read auth migration: %v", err)
+	}
+	sql := string(raw)
+	for _, expected := range []string{
+		"ADD COLUMN IF NOT EXISTS password_hash",
+		"CREATE TABLE IF NOT EXISTS user_sessions",
+		"CREATE TABLE IF NOT EXISTS password_reset_tokens",
+		"idx_users_email_lower",
+		"idx_user_sessions_token_hash",
+		"idx_password_reset_tokens_token_hash",
+	} {
+		if !strings.Contains(sql, expected) {
+			t.Fatalf("expected %q in auth migration", expected)
+		}
+	}
+}
+
+// TestTelegramBindingMigrationAddsTokenTable verifies Telegram binding schema changes are present.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func TestTelegramBindingMigrationAddsTokenTable(t *testing.T) {
+	raw, err := os.ReadFile("../../migrations/005_user_telegram_binding.sql")
+	if err != nil {
+		t.Fatalf("read telegram binding migration: %v", err)
+	}
+	sql := string(raw)
+	for _, expected := range []string{
+		"CREATE TABLE IF NOT EXISTS telegram_binding_tokens",
+		"token_hash CHAR(64) NOT NULL",
+		"idx_telegram_binding_tokens_token_hash",
+		"idx_telegram_binding_tokens_user_expires",
+	} {
+		if !strings.Contains(sql, expected) {
+			t.Fatalf("expected %q in telegram binding migration", expected)
+		}
+	}
+}
+
+// TestUserDeliveryPreferenceMigrationAddsTelegramSwitch verifies user delivery preference schema changes are present.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func TestUserDeliveryPreferenceMigrationAddsTelegramSwitch(t *testing.T) {
+	raw, err := os.ReadFile("../../migrations/006_user_delivery_preferences.sql")
+	if err != nil {
+		t.Fatalf("read user delivery preference migration: %v", err)
+	}
+	sql := string(raw)
+	for _, expected := range []string{
+		"ADD COLUMN IF NOT EXISTS telegram_delivery_enabled",
+		"BOOLEAN NOT NULL DEFAULT TRUE",
+		"idx_users_telegram_delivery_enabled",
+	} {
+		if !strings.Contains(sql, expected) {
+			t.Fatalf("expected %q in user delivery preference migration", expected)
+		}
 	}
 }
 

@@ -13,6 +13,8 @@ type ListFilter struct {
 	RuleType  string
 	EventType string
 	Status    string
+	Scope     string
+	UserID    *int64
 	Since     time.Time
 	Limit     int
 }

@@ -179,6 +179,29 @@ func TestAdminAlertsParsesExchangeFilter(t *testing.T) {
 	}
 }
 
+// TestAdminRulesParsesUserRuleFilters verifies Admin rules can filter user-scoped rules.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-30
+func TestAdminRulesParsesUserRuleFilters(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/rules?scope=user&user_id=42&limit=10", nil)
+	req.Header.Set("Authorization", "Bearer secret")
+	rec := httptest.NewRecorder()
+	admin := &stubAdminService{}
+
+	NewRouter(Dependencies{
+		APIBearerToken: "secret",
+		Admin:          admin,
+	}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
+	if admin.lastFilter.Scope != "user" || admin.lastFilter.UserID == nil || *admin.lastFilter.UserID != 42 {
+		t.Fatalf("unexpected admin filter: %+v", admin.lastFilter)
+	}
+}
+
 // TestAdminEventsReturnsList verifies the Admin Events API exposes alert-related market events.
 //
 // Author: monsterfei

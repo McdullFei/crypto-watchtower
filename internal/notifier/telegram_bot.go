@@ -44,22 +44,32 @@ type TelegramUserBinder interface {
 	UpsertTelegramChat(context.Context, string) error
 }
 
+// TelegramBindingConsumer consumes binding tokens from Telegram /start commands.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+type TelegramBindingConsumer interface {
+	BindTelegramChat(context.Context, string, string) (int64, bool, error)
+}
+
 type TelegramRuleLister interface {
 	ListEnabled(context.Context) ([]model.AlertRule, error)
 }
 
 type TelegramPoller struct {
-	client TelegramClient
-	users  TelegramUserBinder
-	rules  TelegramRuleLister
-	config TelegramPollerConfig
-	offset int64
+	client  TelegramClient
+	users   TelegramUserBinder
+	rules   TelegramRuleLister
+	binding TelegramBindingConsumer
+	config  TelegramPollerConfig
+	offset  int64
 }
 
 func NewTelegramPoller(
 	client TelegramClient,
 	users TelegramUserBinder,
 	rules TelegramRuleLister,
+	binding TelegramBindingConsumer,
 	config TelegramPollerConfig,
 ) *TelegramPoller {
 	if config.PollTimeoutSec <= 0 {
@@ -76,10 +86,11 @@ func NewTelegramPoller(
 		}
 	}
 	return &TelegramPoller{
-		client: client,
-		users:  users,
-		rules:  rules,
-		config: config,
+		client:  client,
+		users:   users,
+		rules:   rules,
+		binding: binding,
+		config:  config,
 	}
 }
 
@@ -118,7 +129,7 @@ func (p *TelegramPoller) PollOnce(ctx context.Context, offset int64) error {
 // Date: 2026-06-29
 // modified by monsterfei on 2026-06-29
 func (p *TelegramPoller) handleMessage(ctx context.Context, message telegramMessage) error {
-	command := normalizeTelegramCommand(message.Text)
+	command, args := parseTelegramCommand(message.Text)
 	if command == "" {
 		return nil
 	}
@@ -130,6 +141,16 @@ func (p *TelegramPoller) handleMessage(ctx context.Context, message telegramMess
 
 	switch command {
 	case "/start":
+		if len(args) > 0 && p.binding != nil {
+			_, ok, err := p.binding.BindTelegramChat(ctx, args[0], chatID)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				return p.client.SendMessage(ctx, chatID, "Telegram binding token is invalid or expired.")
+			}
+			return p.client.SendMessage(ctx, chatID, "Telegram chat bound to your CryptoWatchtower account.")
+		}
 		if p.users != nil {
 			if err := p.users.UpsertTelegramChat(ctx, chatID); err != nil {
 				return err
@@ -156,16 +177,27 @@ func (p *TelegramPoller) handleMessage(ctx context.Context, message telegramMess
 }
 
 func normalizeTelegramCommand(text string) string {
+	command, _ := parseTelegramCommand(text)
+	return command
+}
+
+// parseTelegramCommand returns the command and arguments from one Telegram text message.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+// @param text Telegram message text.
+// @returns Command without bot suffix and remaining arguments.
+func parseTelegramCommand(text string) (string, []string) {
 	text = strings.TrimSpace(text)
 	if text == "" || text[0] != '/' {
-		return ""
+		return "", nil
 	}
 	fields := strings.Fields(text)
 	command := fields[0]
 	if idx := strings.Index(command, "@"); idx >= 0 {
 		command = command[:idx]
 	}
-	return command
+	return command, fields[1:]
 }
 
 func formatRuleList(rules []model.AlertRule) string {

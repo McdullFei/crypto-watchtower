@@ -296,13 +296,51 @@ func TestLoadAppliesSummaryEnvOverrides(t *testing.T) {
 	}
 }
 
+// TestLoadAppliesAuthDefaultsAndEnvOverrides verifies session auth settings default and override correctly.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func TestLoadAppliesAuthDefaultsAndEnvOverrides(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	content := []byte("" +
+		"binance:\n" +
+		"  spot_ws_base_url: wss://stream.binance.com:9443/ws\n" +
+		"  futures_ws_base_url: wss://fstream.binance.com/ws\n" +
+		"  futures_rest_base_url: https://fapi.binance.com\n" +
+		"  symbols: [BTCUSDT]\n" +
+		"postgres:\n" +
+		"  dsn: postgres://from-file\n" +
+		"redis:\n" +
+		"  addr: localhost:6379\n" +
+		"api:\n" +
+		"  bearer_token: file-token\n")
+	if err := os.WriteFile(path, content, 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	t.Setenv("CW_AUTH_PASSWORD_RESET_TTL_MIN", "45")
+	t.Setenv("CW_AUTH_EXPOSE_RESET_TOKEN_IN_DEV", "true")
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+	if cfg.Auth.SessionTTLHours != 168 || cfg.Auth.PasswordResetTTLMin != 45 || !cfg.Auth.ExposeResetTokenInDev {
+		t.Fatalf("unexpected auth config: %+v", cfg.Auth)
+	}
+}
+
 // validConfig returns a minimal valid configuration for validation tests.
 //
 // Author: monsterfei
 // Date: 2026-06-29
+// modified by __AUTHOR__ on 2026-07-01
 func validConfig() Config {
 	cfg := Config{}
 	cfg.API.BearerToken = "token"
+	cfg.Auth.SessionTTLHours = 168
+	cfg.Auth.PasswordResetTTLMin = 30
 	cfg.Postgres.DSN = "postgres://example"
 	cfg.Redis.Addr = "localhost:6379"
 	cfg.Binance.SpotWSBaseURL = "wss://stream.binance.com:9443/ws"

@@ -31,7 +31,19 @@ func NewTelegramNotifier(botToken, chatID string, client *http.Client) TelegramN
 }
 
 func (n TelegramNotifier) Send(ctx context.Context, alert model.Alert) error {
-	if n.BotToken == "" || n.ChatID == "" {
+	return n.SendTo(ctx, n.ChatID, alert)
+}
+
+// SendTo sends one alert to an explicit Telegram chat id.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+// @param ctx Request context.
+// @param chatID Telegram chat id.
+// @param alert Alert to format and send.
+// @returns Error when Telegram delivery fails.
+func (n TelegramNotifier) SendTo(ctx context.Context, chatID string, alert model.Alert) error {
+	if n.BotToken == "" || chatID == "" {
 		return errors.New("telegram notifier is not configured")
 	}
 
@@ -47,7 +59,7 @@ func (n TelegramNotifier) Send(ctx context.Context, alert model.Alert) error {
 
 	var lastErr error
 	for attempt := 1; attempt <= attempts; attempt++ {
-		lastErr = client.SendMessage(ctx, n.ChatID, FormatAlert(alert))
+		lastErr = client.SendMessage(ctx, chatID, FormatAlert(alert))
 		if lastErr == nil {
 			return nil
 		}

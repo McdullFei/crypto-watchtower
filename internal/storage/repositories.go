@@ -9,12 +9,15 @@ import (
 )
 
 type Repositories struct {
-	MarketEvents     MarketEventRepo
-	MarketSummaries  MarketSummaryRepo
-	AlertRules       AlertRuleRepo
-	Alerts           AlertRepo
-	NotificationLogs NotificationLogRepo
-	Users            UserRepo
+	MarketEvents          MarketEventRepo
+	MarketSummaries       MarketSummaryRepo
+	AlertRules            AlertRuleRepo
+	Alerts                AlertRepo
+	NotificationLogs      NotificationLogRepo
+	Users                 UserRepo
+	Sessions              SessionRepo
+	PasswordResetTokens   PasswordResetRepo
+	TelegramBindingTokens TelegramBindingRepo
 }
 
 // NewRepositories creates repository handles backed by one PostgreSQL pool.
@@ -24,12 +27,15 @@ type Repositories struct {
 // modified by monsterfei on 2026-06-30
 func NewRepositories(db *pgxpool.Pool) *Repositories {
 	return &Repositories{
-		MarketEvents:     MarketEventRepo{DB: db},
-		MarketSummaries:  MarketSummaryRepo{DB: db},
-		AlertRules:       AlertRuleRepo{DB: db},
-		Alerts:           AlertRepo{DB: db},
-		NotificationLogs: NotificationLogRepo{DB: db},
-		Users:            UserRepo{DB: db},
+		MarketEvents:          MarketEventRepo{DB: db},
+		MarketSummaries:       MarketSummaryRepo{DB: db},
+		AlertRules:            AlertRuleRepo{DB: db},
+		Alerts:                AlertRepo{DB: db},
+		NotificationLogs:      NotificationLogRepo{DB: db},
+		Users:                 UserRepo{DB: db},
+		Sessions:              SessionRepo{DB: db},
+		PasswordResetTokens:   PasswordResetRepo{DB: db},
+		TelegramBindingTokens: TelegramBindingRepo{DB: db},
 	}
 }
 

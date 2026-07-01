@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -77,6 +78,37 @@ func TestPostgresRedisRepositoriesExerciseRealDependencies(t *testing.T) {
 	}
 	if len(rules) != 1 || rules[0].Symbol != symbol || rules[0].Threshold != rule.Threshold {
 		t.Fatalf("unexpected rules: %+v", rules)
+	}
+
+	var userID int64
+	if err := postgres.QueryRow(ctx, `
+		INSERT INTO users (email, created_at, updated_at)
+		VALUES ($1, $2, $3)
+		RETURNING id
+	`, "integration-"+suffix+"@example.test", now, now).Scan(&userID); err != nil {
+		t.Fatalf("insert user: %v", err)
+	}
+	userRule := model.AlertRule{
+		UserID:    &userID,
+		Scope:     "user",
+		Exchange:  "binance",
+		Symbol:    symbol,
+		RuleType:  "large_trade",
+		Threshold: 234567,
+		WindowSec: 60,
+		Enabled:   true,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if err := repos.AlertRules.UpsertUserRule(ctx, userRule); err != nil {
+		t.Fatalf("upsert user rule: %v", err)
+	}
+	userRules, err := repos.AlertRules.List(ctx, storage.ListFilter{Scope: "user", UserID: &userID, Limit: 1})
+	if err != nil {
+		t.Fatalf("list user rules: %v", err)
+	}
+	if len(userRules) != 1 || userRules[0].UserID == nil || *userRules[0].UserID != userID || userRules[0].Threshold != userRule.Threshold {
+		t.Fatalf("unexpected user rules: %+v", userRules)
 	}
 
 	event := model.MarketEvent{
@@ -185,6 +217,197 @@ func TestPostgresRedisRepositoriesExerciseRealDependencies(t *testing.T) {
 	_ = redisClient.Del(ctx, key).Err()
 }
 
+// TestAuthRepositoriesPersistSessionsAndResetTokens verifies auth persistence against PostgreSQL.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-30
+func TestAuthRepositoriesPersistSessionsAndResetTokens(t *testing.T) {
+	ctx := context.Background()
+	repos := setupIntegrationRepositories(t)
+	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
+	now := time.Now().UTC()
+
+	user, err := repos.Users.CreateWithPassword(ctx, model.User{
+		Email:        "auth-user-" + suffix + "@example.com",
+		PasswordHash: "bcrypt-hash",
+		Plan:         model.UserPlanFree,
+		Status:       model.UserStatusActive,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	found, ok, err := repos.Users.FindByEmail(ctx, strings.ToUpper(user.Email))
+	if err != nil || !ok || found.ID != user.ID || found.PasswordHash != user.PasswordHash {
+		t.Fatalf("find user by email: user=%+v ok=%v err=%v", found, ok, err)
+	}
+	expiresAt := now.Add(time.Hour)
+	sessionHash := strings.Repeat("a", 63) + suffix[len(suffix)-1:]
+	if err := repos.Sessions.Create(ctx, model.UserSession{
+		UserID:    user.ID,
+		TokenHash: sessionHash,
+		ExpiresAt: expiresAt,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}); err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	session, ok, err := repos.Sessions.FindActiveByHash(ctx, sessionHash, time.Now().UTC())
+	if err != nil || !ok || session.UserID != user.ID {
+		t.Fatalf("find active session: session=%+v ok=%v err=%v", session, ok, err)
+	}
+	if err := repos.Sessions.RevokeByHash(ctx, sessionHash, time.Now().UTC()); err != nil {
+		t.Fatalf("revoke session: %v", err)
+	}
+	if _, ok, err := repos.Sessions.FindActiveByHash(ctx, sessionHash, time.Now().UTC()); err != nil || ok {
+		t.Fatalf("expected revoked session to be inactive, ok=%v err=%v", ok, err)
+	}
+
+	resetHash := strings.Repeat("b", 63) + suffix[len(suffix)-1:]
+	if err := repos.PasswordResetTokens.Create(ctx, model.PasswordResetToken{
+		UserID:    user.ID,
+		TokenHash: resetHash,
+		ExpiresAt: expiresAt,
+		CreatedAt: now,
+	}); err != nil {
+		t.Fatalf("create reset token: %v", err)
+	}
+	resetToken, ok, err := repos.PasswordResetTokens.FindActiveByHash(ctx, resetHash, time.Now().UTC())
+	if err != nil || !ok || resetToken.UserID != user.ID {
+		t.Fatalf("find active reset token: token=%+v ok=%v err=%v", resetToken, ok, err)
+	}
+	if err := repos.PasswordResetTokens.MarkUsed(ctx, resetHash, time.Now().UTC()); err != nil {
+		t.Fatalf("mark reset token used: %v", err)
+	}
+	if _, ok, err := repos.PasswordResetTokens.FindActiveByHash(ctx, resetHash, time.Now().UTC()); err != nil || ok {
+		t.Fatalf("expected used reset token to be inactive, ok=%v err=%v", ok, err)
+	}
+}
+
+// TestTelegramBindingRepositoriesPersistAndConsumeTokens verifies binding tokens and account chat ids persist.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func TestTelegramBindingRepositoriesPersistAndConsumeTokens(t *testing.T) {
+	ctx := context.Background()
+	repos := setupIntegrationRepositories(t)
+	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
+	now := time.Now().UTC()
+
+	user, err := repos.Users.CreateWithPassword(ctx, model.User{
+		Email:        "telegram-binding-" + suffix + "@example.com",
+		PasswordHash: "bcrypt-hash",
+		Plan:         model.UserPlanFree,
+		Status:       model.UserStatusActive,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	tokenHash := strings.Repeat("c", 63) + suffix[len(suffix)-1:]
+	if err := repos.TelegramBindingTokens.Create(ctx, model.TelegramBindingToken{
+		UserID:    user.ID,
+		TokenHash: tokenHash,
+		ExpiresAt: now.Add(time.Hour),
+		CreatedAt: now,
+	}); err != nil {
+		t.Fatalf("create binding token: %v", err)
+	}
+	token, ok, err := repos.TelegramBindingTokens.FindActiveByHash(ctx, tokenHash, now)
+	if err != nil || !ok || token.UserID != user.ID {
+		t.Fatalf("find binding token: token=%+v ok=%v err=%v", token, ok, err)
+	}
+	chatID := "12345" + suffix
+	if err := repos.Users.BindTelegramChat(ctx, token.UserID, chatID); err != nil {
+		t.Fatalf("bind telegram chat: %v", err)
+	}
+	if err := repos.TelegramBindingTokens.MarkUsed(ctx, tokenHash, now); err != nil {
+		t.Fatalf("mark binding token used: %v", err)
+	}
+	if _, ok, err := repos.TelegramBindingTokens.FindActiveByHash(ctx, tokenHash, now); err != nil || ok {
+		t.Fatalf("expected used binding token inactive, ok=%v err=%v", ok, err)
+	}
+	found, ok, err := repos.Users.FindByID(ctx, user.ID)
+	if err != nil || !ok || found.TelegramChatID != chatID {
+		t.Fatalf("find bound user: user=%+v ok=%v err=%v", found, ok, err)
+	}
+}
+
+// TestUserDeliveryPreferenceRepositoryPersistsTelegramSwitch verifies Telegram delivery preference persistence.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func TestUserDeliveryPreferenceRepositoryPersistsTelegramSwitch(t *testing.T) {
+	ctx := context.Background()
+	repos := setupIntegrationRepositories(t)
+	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
+	now := time.Now().UTC()
+
+	user, err := repos.Users.CreateWithPassword(ctx, model.User{
+		Email:        "delivery-pref-" + suffix + "@example.com",
+		PasswordHash: "bcrypt-hash",
+		Plan:         model.UserPlanFree,
+		Status:       model.UserStatusActive,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	if !user.TelegramDeliveryEnabled {
+		t.Fatalf("expected telegram delivery enabled by default, got %+v", user)
+	}
+
+	if err := repos.Users.UpdateTelegramDeliveryEnabled(ctx, user.ID, false); err != nil {
+		t.Fatalf("disable telegram delivery: %v", err)
+	}
+	found, ok, err := repos.Users.FindByID(ctx, user.ID)
+	if err != nil || !ok {
+		t.Fatalf("find user: user=%+v ok=%v err=%v", found, ok, err)
+	}
+	if found.TelegramDeliveryEnabled {
+		t.Fatalf("expected telegram delivery disabled, got %+v", found)
+	}
+
+	alertID := "delivery-pref-alert-" + suffix
+	if err := repos.Alerts.Insert(ctx, model.Alert{
+		ID:          alertID,
+		Exchange:    "binance",
+		MarketType:  "spot",
+		Symbol:      "PREF" + suffix,
+		Type:        "large_trade",
+		Severity:    "warning",
+		Title:       "delivery preference alert",
+		Message:     "delivery preference alert",
+		EventID:     "delivery-pref-event-" + suffix,
+		TriggerKey:  "binance:PREF" + suffix + ":large_trade",
+		TriggerTime: now,
+		CreatedAt:   now,
+	}); err != nil {
+		t.Fatalf("insert alert: %v", err)
+	}
+	if err := repos.NotificationLogs.Insert(ctx, model.NotificationLog{
+		UserID:    &user.ID,
+		AlertID:   alertID,
+		Channel:   "telegram",
+		Target:    "12345",
+		Status:    "disabled",
+		CreatedAt: now,
+	}); err != nil {
+		t.Fatalf("insert notification log: %v", err)
+	}
+	logs, err := repos.NotificationLogs.LatestForUser(ctx, user.ID, 1)
+	if err != nil {
+		t.Fatalf("latest notification logs: %v", err)
+	}
+	if len(logs) != 1 || logs[0].Status != "disabled" || logs[0].UserID == nil || *logs[0].UserID != user.ID {
+		t.Fatalf("unexpected latest notification logs: %+v", logs)
+	}
+}
+
 // getenvDefault returns an environment value or the provided fallback.
 //
 // Author: monsterfei
@@ -208,6 +431,36 @@ func repoRoot(t *testing.T) string {
 		t.Fatal("resolve caller path")
 	}
 	return filepath.Clean(filepath.Join(filepath.Dir(filename), "..", ".."))
+}
+
+// setupIntegrationRepositories prepares migrated PostgreSQL repositories for integration tests.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-30
+func setupIntegrationRepositories(t *testing.T) *storage.Repositories {
+	t.Helper()
+	if os.Getenv("CW_INTEGRATION_TESTS") != "1" {
+		t.Skip("set CW_INTEGRATION_TESTS=1 to run real PostgreSQL integration tests")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	t.Cleanup(cancel)
+
+	postgresDSN := getenvDefault("CW_POSTGRES_DSN", "postgres://postgres:postgres@127.0.0.1:5432/crypto_watchtower?sslmode=disable")
+	postgres, err := storage.NewPostgres(ctx, postgresDSN)
+	if err != nil {
+		t.Fatalf("connect postgres: %v", err)
+	}
+	t.Cleanup(postgres.Close)
+
+	migrations, err := storage.NewFileMigrationRunner(storage.NewPostgresMigrationDB(postgres), filepath.Join(repoRoot(t), "migrations"))
+	if err != nil {
+		t.Fatalf("load migrations: %v", err)
+	}
+	if err := migrations.Run(ctx); err != nil {
+		t.Fatalf("run migrations: %v", err)
+	}
+	return storage.NewRepositories(postgres)
 }
 
 // containsNotificationForAlert reports whether logs include the expected alert id.

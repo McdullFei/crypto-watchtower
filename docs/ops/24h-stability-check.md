@@ -62,11 +62,11 @@ docker logs --tail 200 crypto-watchtower-app
 ## 停止
 
 ```bash
-docker compose -f deployments/docker-compose.yml down
+docker compose --env-file deployments/.env.local -f deployments/docker-compose.yml down
 ```
 
 如需清理本地测试数据：
 
 ```bash
-docker compose -f deployments/docker-compose.yml down -v
+docker compose --env-file deployments/.env.local -f deployments/docker-compose.yml down -v
 ```

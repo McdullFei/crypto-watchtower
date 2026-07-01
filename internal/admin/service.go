@@ -92,6 +92,8 @@ func (s Service) ListRules(ctx context.Context, filter api.AdminListFilter) ([]m
 		Exchange: filter.Exchange,
 		Symbol:   filter.Symbol,
 		RuleType: filter.RuleType,
+		Scope:    filter.Scope,
+		UserID:   filter.UserID,
 		Limit:    filter.Limit,
 	})
 }

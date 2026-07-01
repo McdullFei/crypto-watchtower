@@ -11,6 +11,7 @@ import (
 
 	"github.com/renfei198727/crypto-watchtower/internal/admin"
 	"github.com/renfei198727/crypto-watchtower/internal/api"
+	authsvc "github.com/renfei198727/crypto-watchtower/internal/auth"
 	"github.com/renfei198727/crypto-watchtower/internal/collector"
 	"github.com/renfei198727/crypto-watchtower/internal/config"
 	"github.com/renfei198727/crypto-watchtower/internal/eventbus"
@@ -20,6 +21,7 @@ import (
 	"github.com/renfei198727/crypto-watchtower/internal/scheduler"
 	"github.com/renfei198727/crypto-watchtower/internal/storage"
 	"github.com/renfei198727/crypto-watchtower/internal/summary"
+	"github.com/renfei198727/crypto-watchtower/internal/user"
 )
 
 func main() {
@@ -74,7 +76,20 @@ func main() {
 		os.Exit(1)
 	}
 	adminService := admin.NewService(repos)
-	pipeline := rule.NewPipeline(engine, repos, redisClient, buildNotificationSenders(cfg, tg)...)
+	userService := user.NewService(repos.Users, repos.Alerts, repos.AlertRules, repos.NotificationLogs)
+	telegramBindingService := user.NewTelegramBindingService(repos.TelegramBindingTokens, repos.Users, user.TelegramBindingConfig{})
+	authService := authsvc.NewService(
+		repos.Users,
+		repos.Sessions,
+		repos.PasswordResetTokens,
+		authsvc.Config{
+			SessionTTL:       time.Duration(cfg.Auth.SessionTTLHours) * time.Hour,
+			PasswordResetTTL: time.Duration(cfg.Auth.PasswordResetTTLMin) * time.Minute,
+			ExposeResetToken: cfg.App.Env != "prod" && cfg.Auth.ExposeResetTokenInDev,
+		},
+	)
+	pipeline := rule.NewPipeline(engine, repos, redisClient, buildNotificationSenders(cfg, tg)...).
+		WithUserFanout(repos.AlertRules, "telegram", tg)
 
 	go func() {
 		sub := bus.Subscribe(ctx)
@@ -131,6 +146,7 @@ func main() {
 			notifier.NewTelegramClient(cfg.Telegram.BotToken, "", nil),
 			repos.Users,
 			ruleService,
+			telegramBindingService,
 			notifier.TelegramPollerConfig{
 				StatusText: "CryptoWatchtower is running.",
 				TestAlert: model.Alert{
@@ -148,13 +164,16 @@ func main() {
 	}
 
 	router := api.NewRouter(api.Dependencies{
-		APIBearerToken: cfg.API.BearerToken,
-		Symbols:        runtimeSymbols(cfg),
-		RuleConfig:     cfg.Rules,
-		Rules:          ruleService,
-		Admin:          adminService,
-		Telegram:       tg,
-		Collectors:     collectorHealthAdapters(marketCollectors),
+		APIBearerToken:  cfg.API.BearerToken,
+		Symbols:         runtimeSymbols(cfg),
+		RuleConfig:      cfg.Rules,
+		Rules:           ruleService,
+		Admin:           adminService,
+		User:            userService,
+		Auth:            authService,
+		TelegramBinding: telegramBindingService,
+		Telegram:        tg,
+		Collectors:      collectorHealthAdapters(marketCollectors),
 		Dependencies: []api.DependencyStatusProvider{
 			dependencyHealthAdapter{name: "postgres", check: postgres.Ping},
 			dependencyHealthAdapter{name: "redis", check: func(ctx context.Context) error {

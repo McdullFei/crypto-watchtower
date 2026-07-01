@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CryptoWatchtower Dashboard</title>
+    <link rel="stylesheet" href="/dashboard/styles.css">
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <h1>CryptoWatchtower Dashboard</h1>
+          <span>User Console</span>
+        </div>
+        <form id="login-form" class="auth-form">
+          <h2>Login</h2>
+          <label>
+            <span>Email</span>
+            <input id="login-email" type="email" autocomplete="email" placeholder="user@example.com" required>
+          </label>
+          <label>
+            <span>Password</span>
+            <input id="login-password" type="password" autocomplete="current-password" required>
+          </label>
+          <button class="primary-button" type="submit">Login</button>
+        </form>
+        <form id="register-form" class="auth-form">
+          <h2>Register</h2>
+          <label>
+            <span>Email</span>
+            <input id="register-email" type="email" autocomplete="email" placeholder="new@example.com" required>
+          </label>
+          <label>
+            <span>Password</span>
+            <input id="register-password" type="password" autocomplete="new-password" required>
+          </label>
+          <button class="secondary-button" type="submit">Register</button>
+        </form>
+        <form id="password-form" class="auth-form">
+          <h2>Password</h2>
+          <label>
+            <span>Current Password</span>
+            <input id="current-password" type="password" autocomplete="current-password" required>
+          </label>
+          <label>
+            <span>New Password</span>
+            <input id="new-password" type="password" autocomplete="new-password" required>
+          </label>
+          <button class="secondary-button" type="submit">Change Password</button>
+        </form>
+        <button id="reload-button" class="primary-button" type="button">Reload</button>
+        <button id="logout-button" class="secondary-button" type="button">Logout</button>
+        <p id="status-text" class="status-line">Ready.</p>
+      </aside>
+      <main class="content">
+        <section class="topbar">
+          <div>
+            <p class="eyebrow">User Dashboard</p>
+            <h2>Personal monitoring workspace</h2>
+          </div>
+          <div class="topbar-status">
+            <div id="subscription-status" class="subscription-status">Subscription: n/a</div>
+            <div id="binding-status" class="binding-status">Telegram Binding: n/a</div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h3>Subscription</h3>
+          </div>
+          <div id="plan-limits" class="limit-grid"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h3>Telegram Binding</h3>
+            <button id="telegram-bind-button" class="secondary-button inline" type="button">Create Token</button>
+          </div>
+          <div class="binding-help">
+            <p class="muted">Send this command to the Telegram bot:</p>
+            <code id="telegram-binding-token">/start &lt;token&gt;</code>
+            <p id="telegram-binding-expiry" class="muted">No active binding token.</p>
+            <label class="delivery-control">
+              <input id="telegram-delivery-enabled" type="checkbox" checked>
+              <span>Telegram delivery enabled</span>
+            </label>
+            <p id="telegram-delivery-status" class="muted">Delivery status: n/a</p>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h3>Personal Rules</h3>
+          </div>
+          <form id="rule-form" class="rule-form">
+            <label>
+              <span>Exchange</span>
+              <select id="rule-exchange">
+                <option value="binance">Binance</option>
+                <option value="okx">OKX</option>
+              </select>
+            </label>
+            <label>
+              <span>Symbol</span>
+              <input id="rule-symbol" type="text" placeholder="BTCUSDT" required>
+            </label>
+            <label>
+              <span>Rule Type</span>
+              <select id="rule-type">
+                <option value="large_trade">large_trade</option>
+                <option value="large_trade_window">large_trade_window</option>
+                <option value="liquidation">liquidation</option>
+                <option value="funding_anomaly">funding_anomaly</option>
+              </select>
+            </label>
+            <label>
+              <span>Threshold</span>
+              <input id="rule-threshold" type="number" min="0" step="0.0001" required>
+            </label>
+            <label>
+              <span>Window Sec</span>
+              <input id="rule-window-sec" type="number" min="1" value="60">
+            </label>
+            <label class="check-field">
+              <input id="rule-enabled" type="checkbox" checked>
+              <span>Enabled</span>
+            </label>
+            <button class="primary-button inline" type="submit">Save</button>
+          </form>
+          <div id="rules-table" class="list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h3>Alert History</h3>
+          </div>
+          <div id="alerts-table" class="list"></div>
+        </section>
+      </main>
+    </div>
+    <script src="/dashboard/app.js"></script>
+  </body>
+</html>

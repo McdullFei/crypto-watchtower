@@ -74,6 +74,44 @@ func (r AlertRepo) List(ctx context.Context, filter ListFilter) ([]model.Alert, 
 	return out, rows.Err()
 }
 
+// ListForUser returns alerts that have notification logs owned by one user.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-30
+// @param ctx Request context.
+// @param userID User id that owns the notification history.
+// @param limit Maximum number of alerts to return.
+// @returns Bounded alert history for the user.
+func (r AlertRepo) ListForUser(ctx context.Context, userID int64, limit int) ([]model.Alert, error) {
+	rows, err := r.DB.Query(ctx, `
+		SELECT a.id, a.exchange, a.market_type, a.symbol, a.type, a.severity,
+			a.title, a.message, a.event_id, a.rule_id, a.trigger_key, a.trigger_time, a.created_at
+		FROM alerts a
+		WHERE EXISTS (
+			SELECT 1
+			FROM notification_logs n
+			WHERE n.alert_id = a.id
+			  AND n.user_id = $1
+		)
+		ORDER BY a.created_at DESC
+		LIMIT $2
+	`, userID, normalizedLimit(limit))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []model.Alert
+	for rows.Next() {
+		var item model.Alert
+		if err := rows.Scan(&item.ID, &item.Exchange, &item.MarketType, &item.Symbol, &item.Type, &item.Severity, &item.Title, &item.Message, &item.EventID, &item.RuleID, &item.TriggerKey, &item.TriggerTime, &item.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}
+
 func (r AlertRepo) CountSince(ctx context.Context, since time.Time) (int64, error) {
 	var count int64
 	err := r.DB.QueryRow(ctx, `SELECT COUNT(*) FROM alerts WHERE created_at >= $1`, since).Scan(&count)

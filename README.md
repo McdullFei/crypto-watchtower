@@ -1,6 +1,6 @@
 # CryptoWatchtower
 
-CryptoWatchtower 是一个基于 Go 的实时币圈异动监控平台。当前阶段聚焦 **Binance / OKX 市场数据采集、异常规则判断、Telegram 告警推送、PostgreSQL/Redis 状态管理**，目标是先跑通稳定的实时监控链路，再逐步扩展 Dashboard、Discord、AI Summary 和 SaaS 能力。
+CryptoWatchtower 是一个基于 Go 的实时币圈异动监控平台。当前阶段聚焦 **Binance / OKX 市场数据采集、异常规则判断、Telegram 告警推送、PostgreSQL/Redis 状态管理、轻量 Dashboard、SaaS 登录会话与本地订阅权益**，目标是先跑通稳定的实时监控链路，再逐步扩展真实支付计费能力。
 
 > CryptoWatchtower only provides real-time market telemetry and alerting. It is not financial advice.
 >
@@ -25,16 +25,21 @@ CryptoWatchtower 是一个基于 Go 的实时币圈异动监控平台。当前�
 - Dockerfile 与 Docker Compose
 - OKX 可选只读 collector：spot/swap trades、swap liquidation、swap funding-rate
 
-暂未完成：
-
-- 用户侧 Web Dashboard
-
 当前已提供第一版后台管理台骨架：
 
 - `/admin` 轻量后台页面
 - 管理 API：概览、规则、告警、事件、通知日志
 - 后台事件列表当前展示的是“告警相关事件”，不是 Binance 全量市场事件流
 - 运营后台已包含运行状态、exchange/symbol/list 过滤、系统规则编辑和 24 小时趋势摘要
+
+当前已提供第一版用户侧 Dashboard：
+
+- `/dashboard` 用户页面，与 `/admin` 运营后台分离。
+- 用户 API：注册、登录、退出、密码重置、修改密码、个人规则、个人告警历史、Telegram 绑定状态和 Telegram 投递开关。
+- 用户 API 使用 `cw_session` HttpOnly Cookie 解析当前用户，不再要求页面填写 Bearer Token 或显式 `user_id`。
+- Telegram `/start <binding_token>` 可绑定用户账号；用户规则含 `large_trade_window` 命中后会向绑定 Telegram chat 投递，并记录带 `user_id` 的通知日志。
+- 用户可在 Dashboard 开关 Telegram 投递；关闭后不删除绑定，命中规则会记录 `disabled` 通知日志并跳过发送。
+- Free / Pro / VIP 为本地权益层：当前不包含 Stripe、支付宝、微信支付、发票或真实计费。
 
 ## Documentation
 
@@ -53,10 +58,10 @@ Binance WS / REST, OKX Public WS / REST
   -> Telegram Notifier
 
 PostgreSQL:
-  users / alert_rules / market_events / alerts / notification_logs / schema_migrations
+  users / user_sessions / password_reset_tokens / alert_rules / market_events / alerts / notification_logs / schema_migrations
 
 Redis:
-  dedupe keys / rule rate limit keys / short-lived state
+  dedupe keys / rule rate limit keys / user window-rule state / short-lived state
 ```
 
 默认启用 Binance：
@@ -119,18 +124,26 @@ configs/config.example.yaml
 | `summary.timeout_sec` | OpenAI-compatible request timeout in seconds; defaults to `15` |
 | `postgres.dsn` | PostgreSQL DSN |
 | `redis.addr` | Redis address |
+| `redis.password` | Redis password; local initialization default is `CryptoWatchtower_Local_2026!` |
 | `telegram.bot_token` | Telegram Bot token |
 | `telegram.default_chat_id` | Default Telegram chat/channel target |
 | `api.bearer_token` | Bearer token for protected operator APIs |
+| `auth.session_ttl_hours` | Session cookie lifetime in hours; defaults to `168` |
+| `auth.password_reset_ttl_min` | Password reset token lifetime in minutes; defaults to `30` |
+| `auth.expose_reset_token_in_dev` | Return reset token in non-prod environments for manual testing |
 
 支持环境变量覆盖：
 
 ```bash
-CW_POSTGRES_DSN="postgres://postgres:postgres@localhost:5432/crypto_watchtower?sslmode=disable"
+CW_POSTGRES_DSN="postgres://postgres:CryptoWatchtower_Local_2026!@localhost:5432/crypto_watchtower?sslmode=disable"
 CW_REDIS_ADDR="localhost:6379"
+CW_REDIS_PASSWORD="CryptoWatchtower_Local_2026!"
 CW_TELEGRAM_BOT_TOKEN="YOUR_BOT_TOKEN"
 CW_TELEGRAM_DEFAULT_CHAT_ID="YOUR_CHAT_ID"
 CW_API_BEARER_TOKEN="change-me"
+CW_AUTH_SESSION_TTL_HOURS="168"
+CW_AUTH_PASSWORD_RESET_TTL_MIN="30"
+CW_AUTH_EXPOSE_RESET_TOKEN_IN_DEV="true"
 CW_BINANCE_ENABLED="true"
 CW_OKX_ENABLED="true"
 CW_OKX_PUBLIC_WS_BASE_URL="wss://ws.okx.com:8443/ws/v5/public"
@@ -161,8 +174,10 @@ AI 市场摘要默认关闭。开启 `CW_SUMMARY_ENABLED=true` 后，服务会�
 推荐使用 Docker Compose 启动完整本地环境：
 
 ```bash
-docker compose -f deployments/docker-compose.yml up -d --build
+docker compose --env-file deployments/.env.local -f deployments/docker-compose.yml up -d --build
 ```
+
+本地初始化密码写在 `deployments/.env.local` 和 `configs/config.example.yaml` 中：PostgreSQL 与 Redis 默认使用 `CryptoWatchtower_Local_2026!`。这些是项目初始化密码；生产环境请改用 `deployments/.env.prod` 中的 `CHANGE_ME_*` 占位并替换成真实值。
 
 该命令会启动：
 
@@ -173,7 +188,7 @@ docker compose -f deployments/docker-compose.yml up -d --build
 如果本机 `8080` 已被占用，可以指定宿主机端口：
 
 ```bash
-APP_HTTP_PORT=18080 docker compose -f deployments/docker-compose.yml up -d --build
+APP_HTTP_PORT=18080 docker compose --env-file deployments/.env.local -f deployments/docker-compose.yml up -d --build
 ```
 
 健康检查：
@@ -205,13 +220,13 @@ docker logs -f crypto-watchtower-app
 停止服务：
 
 ```bash
-docker compose -f deployments/docker-compose.yml down
+docker compose --env-file deployments/.env.local -f deployments/docker-compose.yml down
 ```
 
 保留数据卷只停服务；如果需要清理 PostgreSQL/Redis 数据卷：
 
 ```bash
-docker compose -f deployments/docker-compose.yml down -v
+docker compose --env-file deployments/.env.local -f deployments/docker-compose.yml down -v
 ```
 
 ## Build Docker Image
@@ -237,8 +252,9 @@ docker run --rm \
   --name crypto-watchtower-app \
   -p 8080:8080 \
   -e CONFIG_PATH=/app/configs/config.example.yaml \
-  -e CW_POSTGRES_DSN="postgres://postgres:postgres@host.docker.internal:5432/crypto_watchtower?sslmode=disable" \
+  -e CW_POSTGRES_DSN="postgres://postgres:CryptoWatchtower_Local_2026!@host.docker.internal:5432/crypto_watchtower?sslmode=disable" \
   -e CW_REDIS_ADDR="host.docker.internal:6379" \
+  -e CW_REDIS_PASSWORD="CryptoWatchtower_Local_2026!" \
   -e CW_TELEGRAM_BOT_TOKEN="YOUR_BOT_TOKEN" \
   -e CW_TELEGRAM_DEFAULT_CHAT_ID="YOUR_CHAT_ID" \
   -e CW_API_BEARER_TOKEN="change-me" \
@@ -252,7 +268,7 @@ Linux 环境如果无法使用 `host.docker.internal`，请改成宿主机网关
 启动依赖：
 
 ```bash
-docker compose -f deployments/docker-compose.yml up -d postgres redis
+docker compose --env-file deployments/.env.local -f deployments/docker-compose.yml up -d postgres redis
 ```
 
 运行服务：
@@ -296,6 +312,23 @@ curl -X POST http://127.0.0.1:8080/api/v1/rules \
   -d '{"exchange":"binance","symbol":"BTCUSDT","rule_type":"large_trade","threshold":120000,"enabled":true}'
 ```
 
+查看某个用户的自定义规则：
+
+```bash
+curl "http://127.0.0.1:8080/api/v1/rules?user_id=42"
+```
+
+写入某个用户的自定义规则：
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/v1/rules \
+  -H "Authorization: Bearer change-me" \
+  -H "Content-Type: application/json" \
+  -d '{"user_id":42,"exchange":"binance","symbol":"BTCUSDT","rule_type":"large_trade","threshold":120000,"enabled":true}'
+```
+
+用户自定义规则会以 `scope=user` 写入 `alert_rules`，当前不会直接覆盖全局实时 Rule Engine。用户侧页面优先使用 `/api/v1/user/*` 接口。
+
 60 秒累计成交额规则也支持同样的动态覆盖：
 
 ```bash
@@ -328,11 +361,138 @@ Authorization: Bearer <api.bearer_token>
 如果 `telegram.enabled=true` 且 `telegram.mode=polling`，Bot 会启用以下命令：
 
 ```text
-/start   保存当前 chat_id；实时告警当前仍发送到配置的默认 chat/channel
-/status  查看服务状态摘要
-/rules   查看当前启用规则
-/test    回发一条测试告警
+/start                  保存当前 chat_id，兼容默认通道调试
+/start <binding_token>  将当前 chat_id 绑定到登录用户账号
+/status                 查看服务状态摘要
+/rules                  查看当前启用规则
+/test                   回发一条测试告警
 ```
+
+## User Dashboard
+
+浏览器打开：
+
+```text
+http://127.0.0.1:8080/dashboard
+```
+
+页面提供注册、登录、退出、修改密码、个人规则和个人告警历史入口。用户侧 API 使用 `cw_session` HttpOnly Cookie，不再需要在页面填写 Bearer Token 或 `user_id`。
+
+密码强度由后端强校验：至少 8 位，且必须同时包含大写字母、小写字母、数字和特殊字符。该规则适用于注册、密码重置确认和修改密码。
+
+注册并写入 session cookie：
+
+```bash
+curl -i -X POST http://127.0.0.1:8080/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"Strong1!"}'
+```
+
+登录并写入 session cookie：
+
+```bash
+curl -i -X POST http://127.0.0.1:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"Strong1!"}'
+```
+
+以下 curl 示例假设已经把返回的 Cookie 保存到 `cookies.txt`：
+
+```bash
+curl -c cookies.txt -X POST http://127.0.0.1:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"Strong1!"}'
+```
+
+退出并撤销服务端 session：
+
+```bash
+curl -b cookies.txt -X POST http://127.0.0.1:8080/api/v1/auth/logout
+```
+
+申请密码重置。本地 `app.env != "prod"` 且 `auth.expose_reset_token_in_dev=true` 时会返回 `reset_token` 方便手工验证；生产只返回泛化受理响应，不暴露账号是否存在：
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/v1/auth/password-reset/request \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com"}'
+```
+
+确认密码重置：
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/v1/auth/password-reset/confirm \
+  -H "Content-Type: application/json" \
+  -d '{"token":"RESET_TOKEN_FROM_DEV_RESPONSE","new_password":"Better1!"}'
+```
+
+登录后修改密码：
+
+```bash
+curl -b cookies.txt -X POST http://127.0.0.1:8080/api/v1/user/password \
+  -H "Content-Type: application/json" \
+  -d '{"current_password":"Strong1!","new_password":"Better1!"}'
+```
+
+查看 Telegram 绑定状态、套餐和限额：
+
+```bash
+curl -b cookies.txt "http://127.0.0.1:8080/api/v1/user/profile"
+```
+
+返回中包含 `telegram_delivery_enabled` 和 `recent_delivery_status`，Dashboard 用它展示投递开关和最近一次投递状态。
+
+生成 Telegram 绑定 token：
+
+```bash
+curl -b cookies.txt -X POST http://127.0.0.1:8080/api/v1/user/telegram/binding-token
+```
+
+把响应里的 `token` 发送给 Telegram Bot：
+
+```text
+/start <token>
+```
+
+绑定成功后，用户规则命中的告警会发送到该用户绑定的 Telegram chat，并在 `notification_logs` 中记录 `user_id/channel/target/status/error_message`。禁用用户和未绑定用户不会触发个人 Telegram 投递。
+
+关闭或开启用户侧 Telegram 投递：
+
+```bash
+curl -b cookies.txt -X PUT http://127.0.0.1:8080/api/v1/user/telegram/delivery \
+  -H "Content-Type: application/json" \
+  -d '{"enabled":false}'
+```
+
+关闭投递不会删除 Telegram 绑定。关闭期间个人规则命中仍会写入用户告警和通知日志，通知日志状态为 `disabled`，不会向 Telegram 发送消息。
+
+查看个人规则：
+
+```bash
+curl -b cookies.txt "http://127.0.0.1:8080/api/v1/user/rules"
+```
+
+写入个人规则，后端从 session 推导用户身份：
+
+```bash
+curl -b cookies.txt -X POST http://127.0.0.1:8080/api/v1/user/rules \
+  -H "Content-Type: application/json" \
+  -d '{"exchange":"binance","symbol":"BTCUSDT","rule_type":"large_trade","threshold":120000,"window_sec":60,"enabled":true}'
+```
+
+用户侧 `large_trade_window` 使用按用户和规则隔离的窗口状态，不复用系统规则窗口，也不会互相影响。
+
+查看个人告警历史：
+
+```bash
+curl -b cookies.txt "http://127.0.0.1:8080/api/v1/user/alerts?limit=20"
+```
+
+个人告警历史通过 `notification_logs.user_id` 关联 `alerts.id` 查询，只展示已有用户通知归属的告警；不会从用户 API 暴露全局后台告警列表。
+
+本地订阅权益当前固定为：Free 最多 5 条个人规则、20 条告警历史；Pro 最多 50 条个人规则、100 条告警历史；VIP 最多 200 条个人规则、200 条告警历史。真实支付计费、发票、组织账号和第三方 OAuth 不包含在当前版本。
+
+Operator API 仍由 `api.bearer_token` 保护，用户 session cookie 不替代运营后台 Bearer Token。
 
 ## Admin APIs
 
@@ -446,8 +606,9 @@ APP_HTTP_PORT=18080 ./scripts/smoke-docker-compose.sh
 
 ```bash
 CW_INTEGRATION_TESTS=1 \
-CW_POSTGRES_DSN="postgres://postgres:postgres@127.0.0.1:5432/crypto_watchtower?sslmode=disable" \
+CW_POSTGRES_DSN="postgres://postgres:CryptoWatchtower_Local_2026!@127.0.0.1:5432/crypto_watchtower?sslmode=disable" \
 CW_REDIS_ADDR="127.0.0.1:6379" \
+CW_REDIS_PASSWORD="CryptoWatchtower_Local_2026!" \
 go test -tags=integration ./internal/integration -v
 ```
 

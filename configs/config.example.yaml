@@ -43,11 +43,11 @@ summary:
   timeout_sec: 15
 
 postgres:
-  dsn: "postgres://postgres:postgres@localhost:5432/crypto_watchtower?sslmode=disable"
+  dsn: "postgres://postgres:CryptoWatchtower_Local_2026!@localhost:5432/crypto_watchtower?sslmode=disable"
 
 redis:
   addr: "localhost:6379"
-  password: ""
+  password: "CryptoWatchtower_Local_2026!"
   db: 0
 
 telegram:
@@ -59,6 +59,11 @@ telegram:
 
 api:
   bearer_token: "change-me"
+
+auth:
+  session_ttl_hours: 168
+  password_reset_ttl_min: 30
+  expose_reset_token_in_dev: true
 
 rules:
   large_trade_single_usdt: 100000

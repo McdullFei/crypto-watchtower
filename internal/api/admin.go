@@ -51,12 +51,19 @@ type AdminSymbolCount struct {
 	Count  int64  `json:"count"`
 }
 
+// AdminListFilter carries bounded Admin list filters.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-30
+// modified by __AUTHOR__ on 2026-06-30
 type AdminListFilter struct {
 	Exchange  string
 	Symbol    string
 	RuleType  string
 	EventType string
 	Status    string
+	Scope     string
+	UserID    *int64
 	Limit     int
 }
 
@@ -155,14 +162,29 @@ func handleAdminRequest(w http.ResponseWriter, r *http.Request, deps Dependencie
 	fn(deps.Admin, w, r)
 }
 
+// adminFilterFromRequest parses shared Admin list filters from query parameters.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-30
+// @param r HTTP request.
+// @returns Admin list filter.
+// modified by __AUTHOR__ on 2026-06-30
 func adminFilterFromRequest(r *http.Request) AdminListFilter {
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	var userID *int64
+	if raw := r.URL.Query().Get("user_id"); raw != "" {
+		if parsed, err := strconv.ParseInt(raw, 10, 64); err == nil && parsed > 0 {
+			userID = &parsed
+		}
+	}
 	return AdminListFilter{
 		Exchange:  r.URL.Query().Get("exchange"),
 		Symbol:    r.URL.Query().Get("symbol"),
 		RuleType:  r.URL.Query().Get("rule_type"),
 		EventType: r.URL.Query().Get("event_type"),
 		Status:    r.URL.Query().Get("status"),
+		Scope:     r.URL.Query().Get("scope"),
+		UserID:    userID,
 		Limit:     limit,
 	}
 }

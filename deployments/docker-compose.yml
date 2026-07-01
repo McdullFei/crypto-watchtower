@@ -18,6 +18,7 @@ services:
       CONFIG_PATH: ${CONFIG_PATH:-/app/configs/config.example.yaml}
       CW_POSTGRES_DSN: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-CryptoWatchtower_Test_2026!}@postgres:5432/${POSTGRES_DB:-crypto_watchtower}?sslmode=disable
       CW_REDIS_ADDR: redis:6379
+      CW_REDIS_PASSWORD: ${REDIS_PASSWORD:-CryptoWatchtower_Test_2026!}
       CW_TELEGRAM_BOT_TOKEN: ${CW_TELEGRAM_BOT_TOKEN:-YOUR_BOT_TOKEN}
       CW_TELEGRAM_DEFAULT_CHAT_ID: ${CW_TELEGRAM_DEFAULT_CHAT_ID:-YOUR_CHAT_ID}
       CW_API_BEARER_TOKEN: ${CW_API_BEARER_TOKEN:-change-me}
@@ -67,13 +68,15 @@ services:
     pull_policy: ${MIDDLEWARE_PULL_POLICY:-always}
     container_name: crypto-watchtower-redis
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-CryptoWatchtower_Test_2026!}
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-CryptoWatchtower_Test_2026!}"]
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping"]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -56,6 +56,38 @@ func (r NotificationLogRepo) List(ctx context.Context, filter ListFilter) ([]mod
 	return out, rows.Err()
 }
 
+// LatestForUser returns recent notification logs owned by one user.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+// @param ctx Request context.
+// @param userID User id to filter.
+// @param limit Maximum number of rows to return.
+// @returns Bounded recent notification logs.
+func (r NotificationLogRepo) LatestForUser(ctx context.Context, userID int64, limit int) ([]model.NotificationLog, error) {
+	rows, err := r.DB.Query(ctx, `
+		SELECT id, user_id, alert_id, channel, target, status, error_message, created_at
+		FROM notification_logs
+		WHERE user_id = $1
+		ORDER BY created_at DESC
+		LIMIT $2
+	`, userID, normalizedLimit(limit))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []model.NotificationLog
+	for rows.Next() {
+		var item model.NotificationLog
+		if err := rows.Scan(&item.ID, &item.UserID, &item.AlertID, &item.Channel, &item.Target, &item.Status, &item.ErrorMessage, &item.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}
+
 func (r NotificationLogRepo) CountSince(ctx context.Context, since time.Time) (int64, error) {
 	var count int64
 	err := r.DB.QueryRow(ctx, `SELECT COUNT(*) FROM notification_logs WHERE created_at >= $1`, since).Scan(&count)

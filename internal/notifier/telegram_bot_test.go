@@ -25,6 +25,25 @@ type stubUserBinder struct {
 	chatIDs []string
 }
 
+// stubTelegramTokenBinder records token-based Telegram bindings for poller tests.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+type stubTelegramTokenBinder struct {
+	token  string
+	chatID string
+}
+
+// BindTelegramChat records one token binding request for poller tests.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func (s *stubTelegramTokenBinder) BindTelegramChat(_ context.Context, token string, chatID string) (int64, bool, error) {
+	s.token = token
+	s.chatID = chatID
+	return 42, true, nil
+}
+
 func (s *stubUserBinder) UpsertTelegramChat(_ context.Context, chatID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -93,7 +112,7 @@ func TestTelegramPollerHandlesStartAndRulesCommands(t *testing.T) {
 		rules: []model.AlertRule{
 			{Symbol: "BTCUSDT", RuleType: "large_trade", Threshold: 100000, Enabled: true},
 		},
-	}, TelegramPollerConfig{})
+	}, nil, TelegramPollerConfig{})
 
 	if err := poller.PollOnce(context.Background(), 0); err != nil {
 		t.Fatalf("poll once: %v", err)
@@ -110,6 +129,58 @@ func TestTelegramPollerHandlesStartAndRulesCommands(t *testing.T) {
 	}
 	if !strings.Contains(sentMessages[0], "default alert channel") {
 		t.Fatalf("expected start reply to explain default alert channel behavior, got %q", sentMessages[0])
+	}
+}
+
+// TestTelegramPollerHandlesStartBindingToken verifies /start token binds a chat to an account.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func TestTelegramPollerHandlesStartBindingToken(t *testing.T) {
+	var sentMessage string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/bot/token/getUpdates":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"ok": true,
+				"result": []map[string]any{
+					{
+						"update_id": 301,
+						"message": map[string]any{
+							"message_id": 1,
+							"chat": map[string]any{
+								"id": 12345,
+							},
+							"text": "/start bind-token",
+						},
+					},
+				},
+			})
+		case "/bot/token/sendMessage":
+			var payload map[string]any
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				t.Fatalf("decode sendMessage payload: %v", err)
+			}
+			sentMessage = payload["text"].(string)
+			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+		default:
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	binding := &stubTelegramTokenBinder{}
+	client := NewTelegramClient("token", server.URL+"/bot", server.Client())
+	poller := NewTelegramPoller(client, &stubUserBinder{}, stubRuleLister{}, binding, TelegramPollerConfig{})
+
+	if err := poller.PollOnce(context.Background(), 0); err != nil {
+		t.Fatalf("poll once: %v", err)
+	}
+	if binding.token != "bind-token" || binding.chatID != "12345" {
+		t.Fatalf("unexpected binding call: %+v", binding)
+	}
+	if !strings.Contains(sentMessage, "bound") {
+		t.Fatalf("expected bound response, got %q", sentMessage)
 	}
 }
 
@@ -147,7 +218,7 @@ func TestTelegramPollerHandlesTestCommand(t *testing.T) {
 	defer server.Close()
 
 	client := NewTelegramClient("token", server.URL+"/bot", server.Client())
-	poller := NewTelegramPoller(client, &stubUserBinder{}, stubRuleLister{}, TelegramPollerConfig{
+	poller := NewTelegramPoller(client, &stubUserBinder{}, stubRuleLister{}, nil, TelegramPollerConfig{
 		TestAlert: model.Alert{
 			Symbol:  "BTCUSDT",
 			Title:   "Telegram test",

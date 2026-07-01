@@ -15,20 +15,33 @@ type AlertSender interface {
 }
 
 type Dependencies struct {
-	APIBearerToken string
-	Symbols        []string
-	RuleConfig     config.RulesConfig
-	Rules          RuleService
-	Admin          AdminService
-	Telegram       AlertSender
-	Collectors     []CollectorStatusProvider
-	Dependencies   []DependencyStatusProvider
+	APIBearerToken  string
+	Symbols         []string
+	RuleConfig      config.RulesConfig
+	Rules           RuleService
+	Admin           AdminService
+	User            UserService
+	Auth            AuthService
+	TelegramBinding TelegramBindingService
+	Telegram        AlertSender
+	Collectors      []CollectorStatusProvider
+	Dependencies    []DependencyStatusProvider
 }
 
+// NewRouter wires public, user-facing, and operator routes into one HTTP handler.
+//
+// Author: __AUTHOR__
+// Date: 2026-06-30
+// @param deps Runtime dependencies required by API routes.
+// @returns HTTP handler for the service.
+// modified by __AUTHOR__ on 2026-06-30
 func NewRouter(deps Dependencies) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/health", NewHealthHandler(deps.Collectors, deps.Dependencies))
 	mountAdminRoutes(mux, deps)
+	mountDashboardRoutes(mux)
+	mountAuthRoutes(mux, deps)
+	mountUserRoutes(mux, deps)
 	mux.HandleFunc("/api/v1/symbols", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{
 			"code":    0,
