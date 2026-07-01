@@ -4,6 +4,7 @@ const passwordForm = document.getElementById("password-form");
 const logoutButton = document.getElementById("logout-button");
 const reloadButton = document.getElementById("reload-button");
 const telegramBindButton = document.getElementById("telegram-bind-button");
+const telegramUnbindButton = document.getElementById("telegram-unbind-button");
 const statusText = document.getElementById("status-text");
 const bindingStatus = document.getElementById("binding-status");
 const subscriptionStatus = document.getElementById("subscription-status");
@@ -12,9 +13,17 @@ const telegramBindingToken = document.getElementById("telegram-binding-token");
 const telegramBindingExpiry = document.getElementById("telegram-binding-expiry");
 const telegramDeliveryEnabled = document.getElementById("telegram-delivery-enabled");
 const telegramDeliveryStatus = document.getElementById("telegram-delivery-status");
+const telegramPreferencesForm = document.getElementById("telegram-preferences-form");
+const telegramQuietHoursEnabled = document.getElementById("telegram-quiet-hours-enabled");
+const telegramQuietHoursStart = document.getElementById("telegram-quiet-hours-start");
+const telegramQuietHoursEnd = document.getElementById("telegram-quiet-hours-end");
+const telegramQuietHoursTimezone = document.getElementById("telegram-quiet-hours-timezone");
+const telegramDigestEnabled = document.getElementById("telegram-digest-enabled");
+const telegramDigestInterval = document.getElementById("telegram-digest-interval");
 const ruleForm = document.getElementById("rule-form");
 const rulesTable = document.getElementById("rules-table");
 const alertsTable = document.getElementById("alerts-table");
+const notificationsTable = document.getElementById("notifications-table");
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -43,8 +52,17 @@ telegramBindButton.addEventListener("click", async () => {
   await createTelegramBindingToken();
 });
 
+telegramUnbindButton.addEventListener("click", async () => {
+  await unbindTelegram();
+});
+
 telegramDeliveryEnabled.addEventListener("change", async () => {
   await updateTelegramDelivery(telegramDeliveryEnabled.checked);
+});
+
+telegramPreferencesForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await updateTelegramPreferences();
 });
 
 ruleForm.addEventListener("submit", async (event) => {
@@ -91,6 +109,27 @@ async function createTelegramBindingToken() {
 }
 
 /**
+ * Clears Telegram binding for the current account.
+ *
+ * Author: __AUTHOR__
+ * Date: 2026-07-01
+ */
+async function unbindTelegram() {
+  setStatus("Unbinding Telegram...");
+  try {
+    const payload = await fetchJSON("/api/v1/user/telegram/binding", {
+      method: "DELETE",
+    });
+    renderProfile(payload.data);
+    telegramBindingToken.textContent = "/start <token>";
+    telegramBindingExpiry.textContent = "No active binding token.";
+    setStatus("Telegram unbound.");
+  } catch (error) {
+    setStatus(`Telegram unbind failed: ${error.message}`, true);
+  }
+}
+
+/**
  * Updates Telegram delivery preference for the current account.
  *
  * Author: __AUTHOR__
@@ -111,6 +150,34 @@ async function updateTelegramDelivery(enabled) {
     setStatus(`Telegram delivery update failed: ${error.message}`, true);
   }
 }
+
+/**
+ * Updates quiet-hours and digest preferences for the current account.
+ *
+ * Author: __AUTHOR__
+ * Date: 2026-07-01
+ */
+async function updateTelegramPreferences() {
+  setStatus("Updating Telegram preferences...");
+  try {
+    const payload = await fetchJSON("/api/v1/user/telegram/preferences", {
+      method: "PUT",
+      body: JSON.stringify({
+        telegram_quiet_hours_enabled: telegramQuietHoursEnabled.checked,
+        telegram_quiet_hours_start: telegramQuietHoursStart.value || "22:00",
+        telegram_quiet_hours_end: telegramQuietHoursEnd.value || "08:00",
+        telegram_quiet_hours_timezone: telegramQuietHoursTimezone.value.trim() || "UTC",
+        telegram_digest_enabled: telegramDigestEnabled.checked,
+        telegram_digest_interval_min: Number(telegramDigestInterval.value || 60),
+      }),
+    });
+    renderProfile(payload.data);
+    setStatus("Telegram preferences updated.");
+  } catch (error) {
+    setStatus(`Telegram preference update failed: ${error.message}`, true);
+  }
+}
+
 
 /**
  * Logs in and loads the session dashboard.
@@ -171,7 +238,7 @@ async function changePassword() {
 }
 
 /**
- * Loads profile, personal rules, and personal alert history.
+ * Loads profile, personal rules, alert history, and notification logs.
  *
  * Author: __AUTHOR__
  * Date: 2026-06-30
@@ -180,15 +247,17 @@ async function changePassword() {
 async function loadDashboard() {
   setStatus("Loading...");
   try {
-    const [profile, rules, alerts] = await Promise.all([
+    const [profile, rules, alerts, notifications] = await Promise.all([
       fetchJSON("/api/v1/user/profile"),
       fetchJSON("/api/v1/user/rules"),
       fetchJSON("/api/v1/user/alerts?limit=20"),
+      fetchJSON("/api/v1/user/notifications?limit=20"),
     ]);
 
     renderProfile(profile.data);
     renderRules(rules.data || []);
     renderAlerts(alerts.data || []);
+    renderNotifications(notifications.data || []);
     setStatus("Loaded.");
   } catch (error) {
     clearDashboard();
@@ -240,9 +309,26 @@ function renderProfile(profile) {
   telegramDeliveryEnabled.checked = deliveryEnabled;
   const recentStatus = profile?.recent_delivery_status || "none";
   telegramDeliveryStatus.textContent = `Delivery status: ${deliveryEnabled ? "enabled" : "disabled"} · recent ${recentStatus}`;
+  renderTelegramPreferences(profile?.notification_preferences || {});
   const plan = profile?.plan || "free";
   subscriptionStatus.textContent = `Subscription: ${plan}`;
   renderPlanLimits(profile?.limits || {});
+}
+
+/**
+ * Renders quiet-hours and digest preferences.
+ *
+ * Author: __AUTHOR__
+ * Date: 2026-07-01
+ * @param preferences Telegram notification preference payload.
+ */
+function renderTelegramPreferences(preferences) {
+  telegramQuietHoursEnabled.checked = Boolean(field(preferences, "telegram_quiet_hours_enabled", "TelegramQuietHoursEnabled"));
+  telegramQuietHoursStart.value = field(preferences, "telegram_quiet_hours_start", "TelegramQuietHoursStart") || "22:00";
+  telegramQuietHoursEnd.value = field(preferences, "telegram_quiet_hours_end", "TelegramQuietHoursEnd") || "08:00";
+  telegramQuietHoursTimezone.value = field(preferences, "telegram_quiet_hours_timezone", "TelegramQuietHoursTimezone") || "UTC";
+  telegramDigestEnabled.checked = Boolean(field(preferences, "telegram_digest_enabled", "TelegramDigestEnabled"));
+  telegramDigestInterval.value = field(preferences, "telegram_digest_interval_min", "TelegramDigestIntervalMin") || 60;
 }
 
 /**
@@ -310,6 +396,20 @@ function renderAlerts(alerts) {
 }
 
 /**
+ * Renders personal notification delivery logs.
+ *
+ * Author: __AUTHOR__
+ * Date: 2026-07-01
+ * @param notifications Notification log records.
+ */
+function renderNotifications(notifications) {
+  renderRows(notificationsTable, notifications, (item) => ({
+    title: `${field(item, "channel", "Channel")} · ${field(item, "status", "Status")}`,
+    detail: `${field(item, "target", "Target")} · ${field(item, "alert_id", "AlertID")} · ${field(item, "error_message", "ErrorMessage") || "ok"} · ${formatTime(field(item, "created_at", "CreatedAt"))}`,
+  }));
+}
+
+/**
  * Clears rendered dashboard data.
  *
  * Author: __AUTHOR__
@@ -322,9 +422,11 @@ function clearDashboard() {
   telegramBindingExpiry.textContent = "No active binding token.";
   telegramDeliveryEnabled.checked = true;
   telegramDeliveryStatus.textContent = "Delivery status: n/a";
+  renderTelegramPreferences({});
   planLimits.innerHTML = "";
   rulesTable.innerHTML = "";
   alertsTable.innerHTML = "";
+  notificationsTable.innerHTML = "";
 }
 
 /**

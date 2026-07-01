@@ -14,12 +14,15 @@ import (
 )
 
 type stubUserService struct {
-	profile        UserProfile
-	alerts         []model.Alert
-	ruleErr        error
-	lastUserID     int64
-	lastLimit      int
-	lastDeliveryOn bool
+	profile                     UserProfile
+	alerts                      []model.Alert
+	notifications               []UserNotificationLog
+	ruleErr                     error
+	lastUserID                  int64
+	lastLimit                   int
+	lastDeliveryOn              bool
+	lastNotificationPreferences model.UserNotificationPreferences
+	unboundUserID               int64
 }
 
 // Profile returns one user profile for user API tests.
@@ -39,6 +42,16 @@ func (s *stubUserService) ListAlerts(_ context.Context, userID int64, limit int)
 	s.lastUserID = userID
 	s.lastLimit = limit
 	return s.alerts, nil
+}
+
+// ListNotificationLogs returns one user's notification history for user API tests.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func (s *stubUserService) ListNotificationLogs(_ context.Context, userID int64, limit int) ([]UserNotificationLog, error) {
+	s.lastUserID = userID
+	s.lastLimit = limit
+	return s.notifications, nil
 }
 
 // CanCreateRule returns the configured rule-limit result for user API tests.
@@ -66,6 +79,32 @@ func (s *stubUserService) UpdateTelegramDeliveryEnabled(_ context.Context, userI
 	s.lastDeliveryOn = enabled
 	s.profile.UserID = userID
 	s.profile.TelegramDeliveryEnabled = enabled
+	return s.profile, nil
+}
+
+// UpdateTelegramNotificationPreferences records one quiet-hours and digest preference update for user API tests.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+// @param userID User id to update.
+// @param preferences Quiet-hours and digest preference payload.
+// @returns Updated profile payload and nil error.
+func (s *stubUserService) UpdateTelegramNotificationPreferences(_ context.Context, userID int64, preferences model.UserNotificationPreferences) (UserProfile, error) {
+	s.lastUserID = userID
+	s.lastNotificationPreferences = preferences
+	s.profile.UserID = userID
+	return s.profile, nil
+}
+
+// UnbindTelegram records one Telegram unbind request for user API tests.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func (s *stubUserService) UnbindTelegram(_ context.Context, userID int64) (UserProfile, error) {
+	s.unboundUserID = userID
+	s.profile.UserID = userID
+	s.profile.TelegramBound = false
+	s.profile.TelegramChatIDMasked = ""
 	return s.profile, nil
 }
 
@@ -261,6 +300,116 @@ func TestUserAlertsListUsesSessionUser(t *testing.T) {
 	}
 }
 
+// TestUserNotificationsListRequiresSession verifies notification history requires login.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func TestUserNotificationsListRequiresSession(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/user/notifications", nil)
+	rec := httptest.NewRecorder()
+
+	NewRouter(Dependencies{Auth: &stubAuthService{}, User: &stubUserService{}}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestUserNotificationsListUsesSessionUser verifies notification history ignores query user ids.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func TestUserNotificationsListUsesSessionUser(t *testing.T) {
+	userSvc := &stubUserService{
+		notifications: []UserNotificationLog{{
+			AlertID:      "alert-1",
+			Channel:      "telegram",
+			Target:       "****7890",
+			Status:       "failed",
+			ErrorMessage: "send failed",
+			CreatedAt:    time.Unix(1710000002, 0).UTC(),
+		}},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/user/notifications?user_id=99&limit=3", nil)
+	req.AddCookie(&http.Cookie{Name: "cw_session", Value: "session-token"})
+	rec := httptest.NewRecorder()
+
+	NewRouter(Dependencies{
+		Auth: &stubAuthService{currentUser: model.User{ID: 42, Status: model.UserStatusActive, Plan: model.UserPlanFree}, currentOK: true},
+		User: userSvc,
+	}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
+	if userSvc.lastUserID != 42 || userSvc.lastLimit != 3 {
+		t.Fatalf("unexpected notification query: user_id=%d limit=%d", userSvc.lastUserID, userSvc.lastLimit)
+	}
+	var payload struct {
+		Data []UserNotificationLog `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(payload.Data) != 1 || payload.Data[0].Target != "****7890" || payload.Data[0].Status != "failed" {
+		t.Fatalf("unexpected notification payload: %+v", payload.Data)
+	}
+}
+
+// TestTelegramNotificationPreferencesRequiresSession verifies quiet-hours and digest preference APIs require login.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func TestTelegramNotificationPreferencesRequiresSession(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/user/telegram/preferences", strings.NewReader(`{}`))
+	rec := httptest.NewRecorder()
+
+	NewRouter(Dependencies{Auth: &stubAuthService{}, User: &stubUserService{}}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestTelegramNotificationPreferencesUsesSessionUser verifies quiet-hours and digest writes ignore external user ids.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func TestTelegramNotificationPreferencesUsesSessionUser(t *testing.T) {
+	userSvc := &stubUserService{profile: UserProfile{UserID: 42, TelegramDeliveryEnabled: true}}
+	body := []byte(`{
+		"user_id": 99,
+		"telegram_quiet_hours_enabled": true,
+		"telegram_quiet_hours_start": "23:30",
+		"telegram_quiet_hours_end": "07:15",
+		"telegram_quiet_hours_timezone": "Asia/Shanghai",
+		"telegram_digest_enabled": true,
+		"telegram_digest_interval_min": 45
+	}`)
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/user/telegram/preferences?user_id=99", bytes.NewReader(body))
+	req.AddCookie(&http.Cookie{Name: "cw_session", Value: "session-token"})
+	rec := httptest.NewRecorder()
+
+	NewRouter(Dependencies{
+		Auth: &stubAuthService{currentUser: model.User{ID: 42, Status: model.UserStatusActive, Plan: model.UserPlanFree}, currentOK: true},
+		User: userSvc,
+	}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
+	if userSvc.lastUserID != 42 {
+		t.Fatalf("expected session user id 42, got %d", userSvc.lastUserID)
+	}
+	got := userSvc.lastNotificationPreferences
+	if !got.TelegramQuietHoursEnabled || got.TelegramQuietHoursStart != "23:30" || got.TelegramQuietHoursEnd != "07:15" || got.TelegramQuietHoursTimezone != "Asia/Shanghai" {
+		t.Fatalf("unexpected quiet-hours preferences: %+v", got)
+	}
+	if !got.TelegramDigestEnabled || got.TelegramDigestIntervalMin != 45 {
+		t.Fatalf("unexpected digest preferences: %+v", got)
+	}
+}
+
 // TestTelegramBindingTokenRequiresSession verifies binding-token requests require login.
 //
 // Author: __AUTHOR__
@@ -358,6 +507,53 @@ func TestTelegramDeliveryPreferenceUsesSessionUser(t *testing.T) {
 	}
 }
 
+// TestTelegramUnbindRequiresSession verifies Telegram unbind requires login.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func TestTelegramUnbindRequiresSession(t *testing.T) {
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/user/telegram/binding", nil)
+	rec := httptest.NewRecorder()
+
+	NewRouter(Dependencies{Auth: &stubAuthService{}, User: &stubUserService{}}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestTelegramUnbindUsesSessionUser verifies Telegram unbind ignores query user ids.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func TestTelegramUnbindUsesSessionUser(t *testing.T) {
+	userSvc := &stubUserService{profile: UserProfile{TelegramDeliveryEnabled: true}}
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/user/telegram/binding?user_id=99", nil)
+	req.AddCookie(&http.Cookie{Name: "cw_session", Value: "session-token"})
+	rec := httptest.NewRecorder()
+
+	NewRouter(Dependencies{
+		Auth: &stubAuthService{currentUser: model.User{ID: 42, Status: model.UserStatusActive, Plan: model.UserPlanFree}, currentOK: true},
+		User: userSvc,
+	}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
+	if userSvc.unboundUserID != 42 {
+		t.Fatalf("expected unbind for user 42, got %d", userSvc.unboundUserID)
+	}
+	var payload struct {
+		Data UserProfile `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.TelegramBound || payload.Data.TelegramChatIDMasked != "" || !payload.Data.TelegramDeliveryEnabled {
+		t.Fatalf("unexpected unbind payload: %+v", payload.Data)
+	}
+}
+
 // TestDashboardPageIsServed verifies the user dashboard page is separate from admin.
 //
 // Author: __AUTHOR__
@@ -383,8 +579,18 @@ func TestDashboardPageIsServed(t *testing.T) {
 		`id="telegram-binding-token"`,
 		`id="telegram-delivery-enabled"`,
 		`id="telegram-delivery-status"`,
+		`id="telegram-preferences-form"`,
+		`id="telegram-quiet-hours-enabled"`,
+		`id="telegram-quiet-hours-start"`,
+		`id="telegram-quiet-hours-end"`,
+		`id="telegram-quiet-hours-timezone"`,
+		`id="telegram-digest-enabled"`,
+		`id="telegram-digest-interval"`,
+		`id="telegram-unbind-button"`,
+		`id="notifications-table"`,
 		"Subscription",
 		"Telegram Binding",
+		"Notification Logs",
 		"Personal Rules",
 		"Alert History",
 	} {

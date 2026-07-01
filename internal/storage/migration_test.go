@@ -121,6 +121,31 @@ func TestUserDeliveryPreferenceMigrationAddsTelegramSwitch(t *testing.T) {
 	}
 }
 
+// TestUserNotificationPreferencesMigrationAddsQuietHoursAndDigest verifies quiet-hours and digest schema changes are present.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func TestUserNotificationPreferencesMigrationAddsQuietHoursAndDigest(t *testing.T) {
+	raw, err := os.ReadFile("../../migrations/007_user_notification_preferences.sql")
+	if err != nil {
+		t.Fatalf("read user notification preference migration: %v", err)
+	}
+	sql := string(raw)
+	for _, expected := range []string{
+		"ADD COLUMN IF NOT EXISTS telegram_quiet_hours_enabled",
+		"ADD COLUMN IF NOT EXISTS telegram_quiet_hours_start",
+		"ADD COLUMN IF NOT EXISTS telegram_quiet_hours_end",
+		"ADD COLUMN IF NOT EXISTS telegram_quiet_hours_timezone",
+		"ADD COLUMN IF NOT EXISTS telegram_digest_enabled",
+		"ADD COLUMN IF NOT EXISTS telegram_digest_interval_min",
+		"idx_users_telegram_digest_enabled",
+	} {
+		if !strings.Contains(sql, expected) {
+			t.Fatalf("expected %q in user notification preference migration", expected)
+		}
+	}
+}
+
 type fakeMigrationDB struct {
 	applied []string
 	execs   []string

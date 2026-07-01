@@ -75,7 +75,10 @@
         <section class="panel">
           <div class="panel-header">
             <h3>Telegram Binding</h3>
-            <button id="telegram-bind-button" class="secondary-button inline" type="button">Create Token</button>
+            <div class="button-row">
+              <button id="telegram-bind-button" class="secondary-button inline" type="button">Create Token</button>
+              <button id="telegram-unbind-button" class="secondary-button inline" type="button">Unbind</button>
+            </div>
           </div>
           <div class="binding-help">
             <p class="muted">Send this command to the Telegram bot:</p>
@@ -86,6 +89,33 @@
               <span>Telegram delivery enabled</span>
             </label>
             <p id="telegram-delivery-status" class="muted">Delivery status: n/a</p>
+            <form id="telegram-preferences-form" class="preferences-form">
+              <label class="check-field">
+                <input id="telegram-quiet-hours-enabled" type="checkbox">
+                <span>Quiet hours enabled</span>
+              </label>
+              <label>
+                <span>Quiet Start</span>
+                <input id="telegram-quiet-hours-start" type="time" value="22:00">
+              </label>
+              <label>
+                <span>Quiet End</span>
+                <input id="telegram-quiet-hours-end" type="time" value="08:00">
+              </label>
+              <label>
+                <span>Timezone</span>
+                <input id="telegram-quiet-hours-timezone" type="text" value="UTC" placeholder="Asia/Shanghai">
+              </label>
+              <label class="check-field">
+                <input id="telegram-digest-enabled" type="checkbox">
+                <span>Digest mode enabled</span>
+              </label>
+              <label>
+                <span>Digest Minutes</span>
+                <input id="telegram-digest-interval" type="number" min="5" max="1440" value="60">
+              </label>
+              <button class="primary-button inline" type="submit">Save Preferences</button>
+            </form>
           </div>
         </section>
 
@@ -136,6 +166,13 @@
             <h3>Alert History</h3>
           </div>
           <div id="alerts-table" class="list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h3>Notification Logs</h3>
+          </div>
+          <div id="notifications-table" class="list"></div>
         </section>
       </main>
     </div>

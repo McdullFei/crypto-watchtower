@@ -18,16 +18,35 @@ const (
 // modified by __AUTHOR__ on 2026-06-30
 // modified by __AUTHOR__ on 2026-07-01
 type User struct {
-	ID                      int64
-	Email                   string
-	PasswordHash            string
-	EmailVerified           bool
-	TelegramChatID          string
-	TelegramDeliveryEnabled bool
-	Plan                    string
-	Status                  string
-	CreatedAt               time.Time
-	UpdatedAt               time.Time
+	ID                         int64
+	Email                      string
+	PasswordHash               string
+	EmailVerified              bool
+	TelegramChatID             string
+	TelegramDeliveryEnabled    bool
+	TelegramQuietHoursEnabled  bool
+	TelegramQuietHoursStart    string
+	TelegramQuietHoursEnd      string
+	TelegramQuietHoursTimezone string
+	TelegramDigestEnabled      bool
+	TelegramDigestIntervalMin  int
+	Plan                       string
+	Status                     string
+	CreatedAt                  time.Time
+	UpdatedAt                  time.Time
+}
+
+// UserNotificationPreferences stores user-controlled Telegram noise preferences.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+type UserNotificationPreferences struct {
+	TelegramQuietHoursEnabled  bool   `json:"telegram_quiet_hours_enabled"`
+	TelegramQuietHoursStart    string `json:"telegram_quiet_hours_start"`
+	TelegramQuietHoursEnd      string `json:"telegram_quiet_hours_end"`
+	TelegramQuietHoursTimezone string `json:"telegram_quiet_hours_timezone"`
+	TelegramDigestEnabled      bool   `json:"telegram_digest_enabled"`
+	TelegramDigestIntervalMin  int    `json:"telegram_digest_interval_min"`
 }
 
 // UserSession stores one persisted login session.

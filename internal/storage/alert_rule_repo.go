@@ -110,12 +110,19 @@ func (r AlertRuleRepo) CountUserRules(ctx context.Context, userID int64) (int64,
 // @param event Market event used for exchange and symbol lookup.
 // @param limit Maximum number of user rules to scan.
 // @returns User-rule targets for fanout.
+// modified by __AUTHOR__ on 2026-07-01
 func (r AlertRuleRepo) ListActiveUserRulesForEvent(ctx context.Context, event model.MarketEvent, limit int) ([]model.UserRuleTarget, error) {
 	rows, err := r.DB.Query(ctx, `
 		SELECT r.id, r.user_id, r.scope, r.exchange, r.symbol, r.rule_type,
 			r.threshold, r.window_sec, r.enabled, r.created_at, r.updated_at,
 			u.id, COALESCE(u.email, ''), COALESCE(u.password_hash, ''), u.email_verified,
 			COALESCE(u.telegram_chat_id, ''), u.telegram_delivery_enabled,
+			u.telegram_quiet_hours_enabled,
+			COALESCE(u.telegram_quiet_hours_start, ''),
+			COALESCE(u.telegram_quiet_hours_end, ''),
+			COALESCE(u.telegram_quiet_hours_timezone, ''),
+			u.telegram_digest_enabled,
+			u.telegram_digest_interval_min,
 			COALESCE(u.plan, ''), COALESCE(u.status, ''), u.created_at, u.updated_at
 		FROM alert_rules r
 		INNER JOIN users u ON u.id = r.user_id
@@ -140,7 +147,10 @@ func (r AlertRuleRepo) ListActiveUserRulesForEvent(ctx context.Context, event mo
 			&target.Rule.ID, &target.Rule.UserID, &target.Rule.Scope, &target.Rule.Exchange, &target.Rule.Symbol, &target.Rule.RuleType,
 			&target.Rule.Threshold, &target.Rule.WindowSec, &target.Rule.Enabled, &target.Rule.CreatedAt, &target.Rule.UpdatedAt,
 			&target.User.ID, &target.User.Email, &target.User.PasswordHash, &target.User.EmailVerified,
-			&target.User.TelegramChatID, &target.User.TelegramDeliveryEnabled, &target.User.Plan, &target.User.Status,
+			&target.User.TelegramChatID, &target.User.TelegramDeliveryEnabled,
+			&target.User.TelegramQuietHoursEnabled, &target.User.TelegramQuietHoursStart, &target.User.TelegramQuietHoursEnd, &target.User.TelegramQuietHoursTimezone,
+			&target.User.TelegramDigestEnabled, &target.User.TelegramDigestIntervalMin,
+			&target.User.Plan, &target.User.Status,
 			&target.User.CreatedAt, &target.User.UpdatedAt,
 		); err != nil {
 			return nil, err

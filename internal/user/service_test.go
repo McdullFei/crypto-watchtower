@@ -25,7 +25,9 @@ type stubAlertRepository struct {
 // Author: __AUTHOR__
 // Date: 2026-07-01
 type stubNotificationRepository struct {
-	logs []model.NotificationLog
+	logs       []model.NotificationLog
+	lastUserID int64
+	lastLimit  int
 }
 
 // stubRuleCountRepository returns a configured rule count for service tests.
@@ -58,7 +60,9 @@ func (s *stubAlertRepository) ListForUser(_ context.Context, userID int64, limit
 //
 // Author: __AUTHOR__
 // Date: 2026-07-01
-func (s stubNotificationRepository) LatestForUser(context.Context, int64, int) ([]model.NotificationLog, error) {
+func (s *stubNotificationRepository) LatestForUser(_ context.Context, userID int64, limit int) ([]model.NotificationLog, error) {
+	s.lastUserID = userID
+	s.lastLimit = limit
 	return s.logs, nil
 }
 
@@ -107,7 +111,7 @@ func TestServiceProfileIncludesRecentDeliveryStatus(t *testing.T) {
 			TelegramDeliveryEnabled: true,
 		},
 		ok: true,
-	}, nil, nil, stubNotificationRepository{logs: []model.NotificationLog{{Status: "failed"}}})
+	}, nil, nil, &stubNotificationRepository{logs: []model.NotificationLog{{Status: "failed"}}})
 
 	profile, err := service.Profile(context.Background(), 42)
 	if err != nil {
@@ -115,6 +119,43 @@ func TestServiceProfileIncludesRecentDeliveryStatus(t *testing.T) {
 	}
 	if profile.RecentDeliveryStatus != "failed" {
 		t.Fatalf("expected recent delivery status failed, got %+v", profile)
+	}
+}
+
+// TestServiceListNotificationLogsMasksTargets verifies user notification logs are scoped and masked.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func TestServiceListNotificationLogsMasksTargets(t *testing.T) {
+	userID := int64(42)
+	notifications := &stubNotificationRepository{
+		logs: []model.NotificationLog{{
+			UserID:       &userID,
+			AlertID:      "alert-1",
+			Channel:      "telegram",
+			Target:       "1234567890",
+			Status:       "sent",
+			ErrorMessage: "",
+			CreatedAt:    time.Unix(1710000002, 0).UTC(),
+		}},
+	}
+	service := NewService(nil, nil, nil, notifications)
+
+	logs, err := service.ListNotificationLogs(context.Background(), userID, 5)
+	if err != nil {
+		t.Fatalf("list notification logs: %v", err)
+	}
+	if notifications.lastUserID != userID || notifications.lastLimit != 5 {
+		t.Fatalf("unexpected notification query: user_id=%d limit=%d", notifications.lastUserID, notifications.lastLimit)
+	}
+	if len(logs) != 1 {
+		t.Fatalf("expected one notification log, got %+v", logs)
+	}
+	if logs[0].Target != "****7890" || logs[0].Target == "1234567890" {
+		t.Fatalf("expected masked target, got %+v", logs[0])
+	}
+	if logs[0].Channel != "telegram" || logs[0].AlertID != "alert-1" || logs[0].Status != "sent" {
+		t.Fatalf("unexpected notification log payload: %+v", logs[0])
 	}
 }
 

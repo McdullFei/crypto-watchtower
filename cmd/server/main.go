@@ -90,6 +90,8 @@ func main() {
 	)
 	pipeline := rule.NewPipeline(engine, repos, redisClient, buildNotificationSenders(cfg, tg)...).
 		WithUserFanout(repos.AlertRules, "telegram", tg)
+	userDigestJob := scheduler.NewUserDigestJob(pipeline, time.Minute)
+	go userDigestJob.Start(ctx)
 
 	go func() {
 		sub := bus.Subscribe(ctx)

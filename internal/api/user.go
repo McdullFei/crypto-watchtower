@@ -32,14 +32,28 @@ var (
 // Date: 2026-06-30
 // modified by __AUTHOR__ on 2026-07-01
 type UserProfile struct {
-	UserID                  int64              `json:"user_id"`
-	TelegramBound           bool               `json:"telegram_bound"`
-	TelegramChatIDMasked    string             `json:"telegram_chat_id_masked,omitempty"`
-	TelegramDeliveryEnabled bool               `json:"telegram_delivery_enabled"`
-	RecentDeliveryStatus    string             `json:"recent_delivery_status,omitempty"`
-	Plan                    string             `json:"plan"`
-	Status                  string             `json:"status"`
-	Limits                  authsvc.PlanLimits `json:"limits"`
+	UserID                  int64                             `json:"user_id"`
+	TelegramBound           bool                              `json:"telegram_bound"`
+	TelegramChatIDMasked    string                            `json:"telegram_chat_id_masked,omitempty"`
+	TelegramDeliveryEnabled bool                              `json:"telegram_delivery_enabled"`
+	NotificationPreferences model.UserNotificationPreferences `json:"notification_preferences"`
+	RecentDeliveryStatus    string                            `json:"recent_delivery_status,omitempty"`
+	Plan                    string                            `json:"plan"`
+	Status                  string                            `json:"status"`
+	Limits                  authsvc.PlanLimits                `json:"limits"`
+}
+
+// UserNotificationLog contains safe notification delivery metadata for dashboard users.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+type UserNotificationLog struct {
+	AlertID      string    `json:"alert_id"`
+	Channel      string    `json:"channel"`
+	Target       string    `json:"target"`
+	Status       string    `json:"status"`
+	ErrorMessage string    `json:"error_message"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 // UserService defines user dashboard reads required by API handlers.
@@ -49,9 +63,12 @@ type UserProfile struct {
 type UserService interface {
 	Profile(context.Context, int64) (UserProfile, error)
 	ListAlerts(context.Context, int64, int) ([]model.Alert, error)
+	ListNotificationLogs(context.Context, int64, int) ([]UserNotificationLog, error)
 	CanCreateRule(context.Context, model.User) error
 	AlertHistoryLimit(model.User, int) int
 	UpdateTelegramDeliveryEnabled(context.Context, int64, bool) (UserProfile, error)
+	UpdateTelegramNotificationPreferences(context.Context, int64, model.UserNotificationPreferences) (UserProfile, error)
+	UnbindTelegram(context.Context, int64) (UserProfile, error)
 }
 
 // TelegramBindingService defines user-owned Telegram binding-token creation.
@@ -100,6 +117,13 @@ func mountUserRoutes(mux *http.ServeMux, deps Dependencies) {
 		}
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	})
+	mux.HandleFunc("/api/v1/user/notifications", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			handleUserNotificationsList(deps).ServeHTTP(w, r)
+			return
+		}
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	})
 	mux.HandleFunc("/api/v1/user/rules", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			handleUserRulesList(deps).ServeHTTP(w, r)
@@ -118,6 +142,13 @@ func mountUserRoutes(mux *http.ServeMux, deps Dependencies) {
 		}
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	})
+	mux.HandleFunc("/api/v1/user/telegram/binding", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			handleTelegramUnbind(deps).ServeHTTP(w, r)
+			return
+		}
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	})
 	mux.HandleFunc("/api/v1/user/telegram/delivery", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			handleTelegramDeliveryPreferenceGet(deps).ServeHTTP(w, r)
@@ -125,6 +156,17 @@ func mountUserRoutes(mux *http.ServeMux, deps Dependencies) {
 		}
 		if r.Method == http.MethodPut {
 			handleTelegramDeliveryPreferencePut(deps).ServeHTTP(w, r)
+			return
+		}
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	})
+	mux.HandleFunc("/api/v1/user/telegram/preferences", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			handleTelegramNotificationPreferencesGet(deps).ServeHTTP(w, r)
+			return
+		}
+		if r.Method == http.MethodPut {
+			handleTelegramNotificationPreferencesPut(deps).ServeHTTP(w, r)
 			return
 		}
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -219,6 +261,39 @@ func handleUserAlertsList(deps Dependencies) http.HandlerFunc {
 			"code":    0,
 			"message": "ok",
 			"data":    alerts,
+		})
+	}
+}
+
+// handleUserNotificationsList returns notification delivery logs for one session user.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+// @param deps Runtime dependencies required by the handler.
+// @returns HTTP handler for user notification-log reads.
+func handleUserNotificationsList(deps Dependencies) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		currentUser, ok, err := requireDashboardUser(w, r, deps)
+		if err != nil || !ok {
+			return
+		}
+		if deps.User == nil {
+			writeJSON(w, http.StatusNotImplemented, map[string]any{
+				"code":    501,
+				"message": "user service is not configured",
+				"data":    nil,
+			})
+			return
+		}
+		logs, err := deps.User.ListNotificationLogs(r.Context(), currentUser.ID, userLimitFromQuery(r))
+		if err != nil {
+			writeInternalError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"code":    0,
+			"message": "ok",
+			"data":    logs,
 		})
 	}
 }
@@ -409,6 +484,91 @@ func handleTelegramDeliveryPreferencePut(deps Dependencies) http.HandlerFunc {
 	}
 }
 
+// handleTelegramNotificationPreferencesGet returns Telegram quiet-hours and digest preferences.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+// @param deps Runtime dependencies required by user APIs.
+// @returns HTTP handler for Telegram notification preference reads.
+func handleTelegramNotificationPreferencesGet(deps Dependencies) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		currentUser, ok, err := requireDashboardUser(w, r, deps)
+		if err != nil || !ok {
+			return
+		}
+		if deps.User == nil {
+			writeJSON(w, http.StatusNotImplemented, map[string]any{"code": 501, "message": "user service is not configured", "data": nil})
+			return
+		}
+		profile, err := deps.User.Profile(r.Context(), currentUser.ID)
+		if err != nil {
+			writeInternalError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"code": 0, "message": "ok", "data": profile})
+	}
+}
+
+// handleTelegramNotificationPreferencesPut updates Telegram quiet-hours and digest preferences.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+// @param deps Runtime dependencies required by user APIs.
+// @returns HTTP handler for Telegram notification preference writes.
+func handleTelegramNotificationPreferencesPut(deps Dependencies) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		currentUser, ok, err := requireDashboardUser(w, r, deps)
+		if err != nil || !ok {
+			return
+		}
+		if deps.User == nil {
+			writeJSON(w, http.StatusNotImplemented, map[string]any{"code": 501, "message": "user service is not configured", "data": nil})
+			return
+		}
+		var req model.UserNotificationPreferences
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid json body", "data": nil})
+			return
+		}
+		req = normalizeTelegramNotificationPreferences(req)
+		if err := validateTelegramNotificationPreferences(req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"code": 400, "message": err.Error(), "data": nil})
+			return
+		}
+		profile, err := deps.User.UpdateTelegramNotificationPreferences(r.Context(), currentUser.ID, req)
+		if err != nil {
+			writeInternalError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"code": 0, "message": "telegram preferences updated", "data": profile})
+	}
+}
+
+// handleTelegramUnbind clears Telegram binding for the current session user.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+// @param deps Runtime dependencies required by user APIs.
+// @returns HTTP handler for Telegram unbind.
+func handleTelegramUnbind(deps Dependencies) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		currentUser, ok, err := requireDashboardUser(w, r, deps)
+		if err != nil || !ok {
+			return
+		}
+		if deps.User == nil {
+			writeJSON(w, http.StatusNotImplemented, map[string]any{"code": 501, "message": "user service is not configured", "data": nil})
+			return
+		}
+		profile, err := deps.User.UnbindTelegram(r.Context(), currentUser.ID)
+		if err != nil {
+			writeInternalError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"code": 0, "message": "telegram unbound", "data": profile})
+	}
+}
+
 // requiredUserIDFromQuery parses a required positive user id from query parameters.
 //
 // Author: __AUTHOR__
@@ -441,4 +601,48 @@ func userLimitFromQuery(r *http.Request) int {
 		return 200
 	}
 	return limit
+}
+
+// normalizeTelegramNotificationPreferences applies safe defaults to optional preference fields.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+// @param preferences Telegram quiet-hours and digest preference payload.
+// @returns Preference payload with default quiet-hours and digest interval values.
+func normalizeTelegramNotificationPreferences(preferences model.UserNotificationPreferences) model.UserNotificationPreferences {
+	if preferences.TelegramQuietHoursStart == "" {
+		preferences.TelegramQuietHoursStart = "22:00"
+	}
+	if preferences.TelegramQuietHoursEnd == "" {
+		preferences.TelegramQuietHoursEnd = "08:00"
+	}
+	if preferences.TelegramQuietHoursTimezone == "" {
+		preferences.TelegramQuietHoursTimezone = "UTC"
+	}
+	if preferences.TelegramDigestIntervalMin <= 0 {
+		preferences.TelegramDigestIntervalMin = 60
+	}
+	return preferences
+}
+
+// validateTelegramNotificationPreferences checks quiet-hours and digest bounds before persistence.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+// @param preferences Telegram quiet-hours and digest preference payload.
+// @returns Error when a payload value is invalid.
+func validateTelegramNotificationPreferences(preferences model.UserNotificationPreferences) error {
+	if _, err := time.Parse("15:04", preferences.TelegramQuietHoursStart); err != nil {
+		return errors.New("telegram_quiet_hours_start must use HH:MM")
+	}
+	if _, err := time.Parse("15:04", preferences.TelegramQuietHoursEnd); err != nil {
+		return errors.New("telegram_quiet_hours_end must use HH:MM")
+	}
+	if _, err := time.LoadLocation(preferences.TelegramQuietHoursTimezone); err != nil {
+		return errors.New("telegram_quiet_hours_timezone is invalid")
+	}
+	if preferences.TelegramDigestIntervalMin < 5 || preferences.TelegramDigestIntervalMin > 1440 {
+		return errors.New("telegram_digest_interval_min must be between 5 and 1440")
+	}
+	return nil
 }

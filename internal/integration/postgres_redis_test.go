@@ -408,6 +408,94 @@ func TestUserDeliveryPreferenceRepositoryPersistsTelegramSwitch(t *testing.T) {
 	}
 }
 
+// TestUserNotificationPreferencesRepositoryPersistsQuietHoursAndDigest verifies quiet-hours and digest preferences persist.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func TestUserNotificationPreferencesRepositoryPersistsQuietHoursAndDigest(t *testing.T) {
+	ctx := context.Background()
+	repos := setupIntegrationRepositories(t)
+	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
+	now := time.Now().UTC()
+
+	user, err := repos.Users.CreateWithPassword(ctx, model.User{
+		Email:        "notification-pref-" + suffix + "@example.com",
+		PasswordHash: "bcrypt-hash",
+		Plan:         model.UserPlanFree,
+		Status:       model.UserStatusActive,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	if user.TelegramQuietHoursEnabled || user.TelegramDigestEnabled {
+		t.Fatalf("expected quiet hours and digest disabled by default, got %+v", user)
+	}
+
+	preferences := model.UserNotificationPreferences{
+		TelegramQuietHoursEnabled:  true,
+		TelegramQuietHoursStart:    "23:30",
+		TelegramQuietHoursEnd:      "07:15",
+		TelegramQuietHoursTimezone: "Asia/Shanghai",
+		TelegramDigestEnabled:      true,
+		TelegramDigestIntervalMin:  45,
+	}
+	if err := repos.Users.UpdateTelegramNotificationPreferences(ctx, user.ID, preferences); err != nil {
+		t.Fatalf("update notification preferences: %v", err)
+	}
+	found, ok, err := repos.Users.FindByID(ctx, user.ID)
+	if err != nil || !ok {
+		t.Fatalf("find user: user=%+v ok=%v err=%v", found, ok, err)
+	}
+	if !found.TelegramQuietHoursEnabled || found.TelegramQuietHoursStart != "23:30" || found.TelegramQuietHoursEnd != "07:15" || found.TelegramQuietHoursTimezone != "Asia/Shanghai" {
+		t.Fatalf("unexpected quiet-hours preferences: %+v", found)
+	}
+	if !found.TelegramDigestEnabled || found.TelegramDigestIntervalMin != 45 {
+		t.Fatalf("unexpected digest preferences: %+v", found)
+	}
+}
+
+// TestUserTelegramUnbindClearsChatAndPreservesDeliveryPreference verifies unbind persistence.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func TestUserTelegramUnbindClearsChatAndPreservesDeliveryPreference(t *testing.T) {
+	ctx := context.Background()
+	repos := setupIntegrationRepositories(t)
+	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
+	now := time.Now().UTC()
+
+	user, err := repos.Users.CreateWithPassword(ctx, model.User{
+		Email:          "unbind-" + suffix + "@example.com",
+		PasswordHash:   "bcrypt-hash",
+		TelegramChatID: "unbind-chat-" + suffix,
+		Plan:           model.UserPlanFree,
+		Status:         model.UserStatusActive,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	if err := repos.Users.UpdateTelegramDeliveryEnabled(ctx, user.ID, false); err != nil {
+		t.Fatalf("disable telegram delivery: %v", err)
+	}
+	if err := repos.Users.UnbindTelegramChat(ctx, user.ID); err != nil {
+		t.Fatalf("unbind telegram chat: %v", err)
+	}
+	found, ok, err := repos.Users.FindByID(ctx, user.ID)
+	if err != nil || !ok {
+		t.Fatalf("find user: user=%+v ok=%v err=%v", found, ok, err)
+	}
+	if found.TelegramChatID != "" {
+		t.Fatalf("expected telegram chat cleared, got %+v", found)
+	}
+	if found.TelegramDeliveryEnabled {
+		t.Fatalf("expected telegram delivery preference preserved as disabled, got %+v", found)
+	}
+}
+
 // getenvDefault returns an environment value or the provided fallback.
 //
 // Author: monsterfei

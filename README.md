@@ -35,10 +35,11 @@ CryptoWatchtower 是一个基于 Go 的实时币圈异动监控平台。当前�
 当前已提供第一版用户侧 Dashboard：
 
 - `/dashboard` 用户页面，与 `/admin` 运营后台分离。
-- 用户 API：注册、登录、退出、密码重置、修改密码、个人规则、个人告警历史、Telegram 绑定状态和 Telegram 投递开关。
+- 用户 API：注册、登录、退出、密码重置、修改密码、个人规则、个人告警历史、个人通知日志、Telegram 绑定状态、解绑、Telegram 投递开关、免打扰时段和摘要投递偏好。
 - 用户 API 使用 `cw_session` HttpOnly Cookie 解析当前用户，不再要求页面填写 Bearer Token 或显式 `user_id`。
 - Telegram `/start <binding_token>` 可绑定用户账号；用户规则含 `large_trade_window` 命中后会向绑定 Telegram chat 投递，并记录带 `user_id` 的通知日志。
 - 用户可在 Dashboard 开关 Telegram 投递；关闭后不删除绑定，命中规则会记录 `disabled` 通知日志并跳过发送。
+- 用户可在 Dashboard 配置 Telegram 免打扰时段和摘要模式；免打扰命中写入 `quiet_hours` 日志，摘要模式写入 `digested` 日志并由定时任务汇总发送。
 - Free / Pro / VIP 为本地权益层：当前不包含 Stripe、支付宝、微信支付、发票或真实计费。
 
 ## Documentation
@@ -376,7 +377,7 @@ Authorization: Bearer <api.bearer_token>
 http://127.0.0.1:8080/dashboard
 ```
 
-页面提供注册、登录、退出、修改密码、个人规则和个人告警历史入口。用户侧 API 使用 `cw_session` HttpOnly Cookie，不再需要在页面填写 Bearer Token 或 `user_id`。
+页面提供注册、登录、退出、修改密码、个人规则、个人告警历史、Telegram 绑定、投递开关、免打扰时段、摘要投递偏好和个人通知日志入口。用户侧 API 使用 `cw_session` HttpOnly Cookie，不再需要在页面填写 Bearer Token 或 `user_id`。
 
 密码强度由后端强校验：至少 8 位，且必须同时包含大写字母、小写字母、数字和特殊字符。该规则适用于注册、密码重置确认和修改密码。
 
@@ -440,7 +441,7 @@ curl -b cookies.txt -X POST http://127.0.0.1:8080/api/v1/user/password \
 curl -b cookies.txt "http://127.0.0.1:8080/api/v1/user/profile"
 ```
 
-返回中包含 `telegram_delivery_enabled` 和 `recent_delivery_status`，Dashboard 用它展示投递开关和最近一次投递状态。
+返回中包含 `telegram_delivery_enabled`、`notification_preferences` 和 `recent_delivery_status`，Dashboard 用它展示投递开关、免打扰时段、摘要投递偏好和最近一次投递状态。
 
 生成 Telegram 绑定 token：
 
@@ -466,6 +467,24 @@ curl -b cookies.txt -X PUT http://127.0.0.1:8080/api/v1/user/telegram/delivery \
 
 关闭投递不会删除 Telegram 绑定。关闭期间个人规则命中仍会写入用户告警和通知日志，通知日志状态为 `disabled`，不会向 Telegram 发送消息。
 
+配置用户侧 Telegram 免打扰时段和摘要模式：
+
+```bash
+curl -b cookies.txt -X PUT http://127.0.0.1:8080/api/v1/user/telegram/preferences \
+  -H "Content-Type: application/json" \
+  -d '{"telegram_quiet_hours_enabled":true,"telegram_quiet_hours_start":"23:00","telegram_quiet_hours_end":"07:00","telegram_quiet_hours_timezone":"Asia/Shanghai","telegram_digest_enabled":true,"telegram_digest_interval_min":60}'
+```
+
+免打扰时段按用户显式时区判断，只影响用户规则 Telegram 投递，不影响运营后台 Bearer Token 通知和默认系统通知。免打扰期间命中的用户规则会写入 `quiet_hours` 通知日志并跳过发送。摘要模式启用后，命中的用户规则会按用户、时间窗口和最大条数有界累计，先写入 `digested` 通知日志，再由定时任务发送一条摘要 Telegram。
+
+解绑当前用户 Telegram：
+
+```bash
+curl -b cookies.txt -X DELETE http://127.0.0.1:8080/api/v1/user/telegram/binding
+```
+
+解绑只清空当前 session 用户的 `telegram_chat_id`，不会修改 `telegram_delivery_enabled` 偏好。
+
 查看个人规则：
 
 ```bash
@@ -489,6 +508,14 @@ curl -b cookies.txt "http://127.0.0.1:8080/api/v1/user/alerts?limit=20"
 ```
 
 个人告警历史通过 `notification_logs.user_id` 关联 `alerts.id` 查询，只展示已有用户通知归属的告警；不会从用户 API 暴露全局后台告警列表。
+
+查看个人通知日志：
+
+```bash
+curl -b cookies.txt "http://127.0.0.1:8080/api/v1/user/notifications?limit=20"
+```
+
+个人通知日志同样从 session 推导用户身份，即使传入 `user_id` 也不会读取其它用户数据。响应中的 `target` 已脱敏。
 
 本地订阅权益当前固定为：Free 最多 5 条个人规则、20 条告警历史；Pro 最多 50 条个人规则、100 条告警历史；VIP 最多 200 条个人规则、200 条告警历史。真实支付计费、发票、组织账号和第三方 OAuth 不包含在当前版本。
 

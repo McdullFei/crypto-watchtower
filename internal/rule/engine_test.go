@@ -311,6 +311,127 @@ func TestPipelineRecordsDisabledTelegramDelivery(t *testing.T) {
 	}
 }
 
+// TestPipelineRecordsQuietHoursWithoutSending verifies user quiet hours suppress Telegram delivery.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func TestPipelineRecordsQuietHoursWithoutSending(t *testing.T) {
+	userID := int64(42)
+	repos := &fakePipelineRepositories{}
+	userRules := fakeUserRuleRepository{
+		targets: []UserRuleTarget{{
+			User: model.User{
+				ID:                         userID,
+				Status:                     model.UserStatusActive,
+				TelegramChatID:             "12345",
+				TelegramDeliveryEnabled:    true,
+				TelegramQuietHoursEnabled:  true,
+				TelegramQuietHoursStart:    "23:00",
+				TelegramQuietHoursEnd:      "07:00",
+				TelegramQuietHoursTimezone: "Asia/Shanghai",
+			},
+			Rule: model.AlertRule{
+				ID:        12,
+				UserID:    &userID,
+				Scope:     "user",
+				Exchange:  "binance",
+				Symbol:    "BTCUSDT",
+				RuleType:  "large_trade",
+				Threshold: 100000,
+				Enabled:   true,
+			},
+		}},
+	}
+	userSender := &fakeUserAlertSender{}
+	pipeline := NewPipeline(fakeEvaluator{}, repos, nil).
+		WithUserFanout(userRules, "telegram", userSender)
+
+	err := pipeline.HandleEvent(context.Background(), model.MarketEvent{
+		ID:        "event-quiet-hours",
+		Exchange:  "binance",
+		Symbol:    "BTCUSDT",
+		EventType: "agg_trade",
+		Notional:  200000,
+		EventTime: time.Date(2026, 7, 1, 16, 0, 0, 0, time.UTC),
+	})
+	if err != nil {
+		t.Fatalf("handle event: %v", err)
+	}
+	if len(userSender.targets) != 0 {
+		t.Fatalf("expected quiet hours to suppress Telegram sends, got %+v", userSender.targets)
+	}
+	if len(repos.notificationLogs) != 1 {
+		t.Fatalf("expected one quiet-hours notification log, got %+v", repos.notificationLogs)
+	}
+	log := repos.notificationLogs[0]
+	if log.Status != "quiet_hours" || log.Target != "12345" || log.UserID == nil || *log.UserID != userID {
+		t.Fatalf("unexpected quiet-hours log: %+v", log)
+	}
+}
+
+// TestPipelineQueuesAndFlushesDigest verifies digest mode queues bounded alerts and later sends a summary.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+func TestPipelineQueuesAndFlushesDigest(t *testing.T) {
+	userID := int64(42)
+	repos := &fakePipelineRepositories{}
+	userRules := fakeUserRuleRepository{
+		targets: []UserRuleTarget{{
+			User: model.User{
+				ID:                        userID,
+				Status:                    model.UserStatusActive,
+				TelegramChatID:            "12345",
+				TelegramDeliveryEnabled:   true,
+				TelegramDigestEnabled:     true,
+				TelegramDigestIntervalMin: 30,
+			},
+			Rule: model.AlertRule{
+				ID:        13,
+				UserID:    &userID,
+				Scope:     "user",
+				Exchange:  "binance",
+				Symbol:    "BTCUSDT",
+				RuleType:  "large_trade",
+				Threshold: 100000,
+				Enabled:   true,
+			},
+		}},
+	}
+	userSender := &fakeUserAlertSender{}
+	pipeline := NewPipeline(fakeEvaluator{}, repos, nil).
+		WithUserFanout(userRules, "telegram", userSender)
+	eventTime := time.Date(2026, 7, 1, 10, 0, 0, 0, time.UTC)
+
+	err := pipeline.HandleEvent(context.Background(), model.MarketEvent{
+		ID:        "event-digest",
+		Exchange:  "binance",
+		Symbol:    "BTCUSDT",
+		EventType: "agg_trade",
+		Notional:  200000,
+		EventTime: eventTime,
+	})
+	if err != nil {
+		t.Fatalf("handle event: %v", err)
+	}
+	if len(userSender.targets) != 0 {
+		t.Fatalf("expected digest mode to queue without immediate sends, got %+v", userSender.targets)
+	}
+	if len(repos.notificationLogs) != 1 || repos.notificationLogs[0].Status != "digested" {
+		t.Fatalf("expected digested notification log, got %+v", repos.notificationLogs)
+	}
+
+	if err := pipeline.FlushUserDigests(context.Background(), eventTime.Add(31*time.Minute)); err != nil {
+		t.Fatalf("flush digest: %v", err)
+	}
+	if len(userSender.targets) != 1 || userSender.targets[0] != "12345" {
+		t.Fatalf("expected one digest Telegram send, got %+v", userSender.targets)
+	}
+	if len(userSender.alerts) != 1 || userSender.alerts[0].Type != "user_digest" {
+		t.Fatalf("expected digest summary alert, got %+v", userSender.alerts)
+	}
+}
+
 type fakeEvaluator struct {
 	alerts []model.Alert
 }
@@ -342,13 +463,26 @@ func (r fakeUserRuleRepository) ListActiveUserRulesForEvent(context.Context, mod
 	return r.targets, nil
 }
 
+// fakeUserAlertSender records user-targeted sends for rule pipeline tests.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
 type fakeUserAlertSender struct {
 	targets []string
+	alerts  []model.Alert
 	err     error
 }
 
+// SendTo records one targeted alert send for rule pipeline tests.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+// @param target User notification target.
+// @param alert Alert sent to the target.
+// @returns Configured fake sender error.
 func (s *fakeUserAlertSender) SendTo(ctx context.Context, target string, alert model.Alert) error {
 	s.targets = append(s.targets, target)
+	s.alerts = append(s.alerts, alert)
 	return s.err
 }
 

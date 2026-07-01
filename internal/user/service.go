@@ -24,6 +24,22 @@ type DeliveryPreferenceRepository interface {
 	UpdateTelegramDeliveryEnabled(context.Context, int64, bool) error
 }
 
+// NotificationPreferenceRepository defines Telegram quiet-hours and digest preference writes.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+type NotificationPreferenceRepository interface {
+	UpdateTelegramNotificationPreferences(context.Context, int64, model.UserNotificationPreferences) error
+}
+
+// TelegramUnbindRepository defines current-user Telegram unbind writes.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+type TelegramUnbindRepository interface {
+	UnbindTelegramChat(context.Context, int64) error
+}
+
 // AlertRepository defines bounded user alert history reads for the dashboard.
 //
 // Author: __AUTHOR__
@@ -54,11 +70,13 @@ type RuleCountRepository interface {
 // Date: 2026-06-30
 // modified by __AUTHOR__ on 2026-07-01
 type Service struct {
-	profiles      ProfileRepository
-	preferences   DeliveryPreferenceRepository
-	alerts        AlertRepository
-	notifications NotificationRepository
-	rules         RuleCountRepository
+	profiles                 ProfileRepository
+	preferences              DeliveryPreferenceRepository
+	notificationsPreferences NotificationPreferenceRepository
+	unbinder                 TelegramUnbindRepository
+	alerts                   AlertRepository
+	notifications            NotificationRepository
+	rules                    RuleCountRepository
 }
 
 // NewService creates the user dashboard service from narrow repositories.
@@ -73,16 +91,20 @@ type Service struct {
 // modified by __AUTHOR__ on 2026-07-01
 func NewService(profiles ProfileRepository, alerts AlertRepository, rules RuleCountRepository, notifications ...NotificationRepository) Service {
 	preferences, _ := profiles.(DeliveryPreferenceRepository)
+	notificationPreferences, _ := profiles.(NotificationPreferenceRepository)
+	unbinder, _ := profiles.(TelegramUnbindRepository)
 	var notificationRepo NotificationRepository
 	if len(notifications) > 0 {
 		notificationRepo = notifications[0]
 	}
 	return Service{
-		profiles:      profiles,
-		preferences:   preferences,
-		alerts:        alerts,
-		notifications: notificationRepo,
-		rules:         rules,
+		profiles:                 profiles,
+		preferences:              preferences,
+		notificationsPreferences: notificationPreferences,
+		unbinder:                 unbinder,
+		alerts:                   alerts,
+		notifications:            notificationRepo,
+		rules:                    rules,
 	}
 }
 
@@ -117,6 +139,7 @@ func (s Service) Profile(ctx context.Context, userID int64) (api.UserProfile, er
 	profile.TelegramBound = user.TelegramChatID != ""
 	profile.TelegramChatIDMasked = maskBinding(user.TelegramChatID)
 	profile.TelegramDeliveryEnabled = user.TelegramDeliveryEnabled
+	profile.NotificationPreferences = notificationPreferencesFromUser(user)
 	if s.notifications != nil {
 		logs, err := s.notifications.LatestForUser(ctx, userID, 1)
 		if err != nil {
@@ -154,6 +177,44 @@ func (s Service) UpdateTelegramDeliveryEnabled(ctx context.Context, userID int64
 	return profile, nil
 }
 
+// UpdateTelegramNotificationPreferences persists quiet-hours and digest preferences and returns the refreshed profile.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+// @param ctx Request context.
+// @param userID User id to update.
+// @param preferences Quiet-hours and digest preference values.
+// @returns Refreshed profile metadata.
+func (s Service) UpdateTelegramNotificationPreferences(ctx context.Context, userID int64, preferences model.UserNotificationPreferences) (api.UserProfile, error) {
+	if s.notificationsPreferences != nil {
+		if err := s.notificationsPreferences.UpdateTelegramNotificationPreferences(ctx, userID, preferences); err != nil {
+			return api.UserProfile{}, err
+		}
+	}
+	profile, err := s.Profile(ctx, userID)
+	if err != nil {
+		return api.UserProfile{}, err
+	}
+	profile.NotificationPreferences = preferences
+	return profile, nil
+}
+
+// UnbindTelegram clears Telegram binding for one user and returns the refreshed profile.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+// @param ctx Request context.
+// @param userID User id to unbind.
+// @returns Refreshed profile metadata.
+func (s Service) UnbindTelegram(ctx context.Context, userID int64) (api.UserProfile, error) {
+	if s.unbinder != nil {
+		if err := s.unbinder.UnbindTelegramChat(ctx, userID); err != nil {
+			return api.UserProfile{}, err
+		}
+	}
+	return s.Profile(ctx, userID)
+}
+
 // ListAlerts returns alert history that belongs to one user.
 //
 // Author: __AUTHOR__
@@ -167,6 +228,36 @@ func (s Service) ListAlerts(ctx context.Context, userID int64, limit int) ([]mod
 		return []model.Alert{}, nil
 	}
 	return s.alerts.ListForUser(ctx, userID, limit)
+}
+
+// ListNotificationLogs returns safe bounded notification logs for one user.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+// @param ctx Request context.
+// @param userID User id that owns notification history.
+// @param limit Maximum number of logs to return.
+// @returns Bounded notification logs with masked targets.
+func (s Service) ListNotificationLogs(ctx context.Context, userID int64, limit int) ([]api.UserNotificationLog, error) {
+	if s.notifications == nil {
+		return []api.UserNotificationLog{}, nil
+	}
+	logs, err := s.notifications.LatestForUser(ctx, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]api.UserNotificationLog, 0, len(logs))
+	for _, item := range logs {
+		out = append(out, api.UserNotificationLog{
+			AlertID:      item.AlertID,
+			Channel:      item.Channel,
+			Target:       maskBinding(item.Target),
+			Status:       item.Status,
+			ErrorMessage: item.ErrorMessage,
+			CreatedAt:    item.CreatedAt,
+		})
+	}
+	return out, nil
 }
 
 // CanCreateRule checks whether a user can add another personal alert rule.
@@ -223,4 +314,34 @@ func maskBinding(value string) string {
 		return "****"
 	}
 	return "****" + value[len(value)-4:]
+}
+
+// notificationPreferencesFromUser returns user preference fields with safe defaults.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+// @param user User model containing persisted preference fields.
+// @returns Telegram quiet-hours and digest preferences for API responses.
+func notificationPreferencesFromUser(user model.User) model.UserNotificationPreferences {
+	preferences := model.UserNotificationPreferences{
+		TelegramQuietHoursEnabled:  user.TelegramQuietHoursEnabled,
+		TelegramQuietHoursStart:    user.TelegramQuietHoursStart,
+		TelegramQuietHoursEnd:      user.TelegramQuietHoursEnd,
+		TelegramQuietHoursTimezone: user.TelegramQuietHoursTimezone,
+		TelegramDigestEnabled:      user.TelegramDigestEnabled,
+		TelegramDigestIntervalMin:  user.TelegramDigestIntervalMin,
+	}
+	if preferences.TelegramQuietHoursStart == "" {
+		preferences.TelegramQuietHoursStart = "22:00"
+	}
+	if preferences.TelegramQuietHoursEnd == "" {
+		preferences.TelegramQuietHoursEnd = "08:00"
+	}
+	if preferences.TelegramQuietHoursTimezone == "" {
+		preferences.TelegramQuietHoursTimezone = "UTC"
+	}
+	if preferences.TelegramDigestIntervalMin <= 0 {
+		preferences.TelegramDigestIntervalMin = 60
+	}
+	return preferences
 }

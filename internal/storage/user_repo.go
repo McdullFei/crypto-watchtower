@@ -49,6 +49,23 @@ func (r UserRepo) BindTelegramChat(ctx context.Context, userID int64, chatID str
 	return err
 }
 
+// UnbindTelegramChat clears one user's Telegram chat id without changing delivery preference.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+// @param ctx Request context.
+// @param userID User id to unbind.
+// @returns Error when persistence fails.
+func (r UserRepo) UnbindTelegramChat(ctx context.Context, userID int64) error {
+	_, err := r.DB.Exec(ctx, `
+		UPDATE users
+		SET telegram_chat_id = NULL,
+			updated_at = $2
+		WHERE id = $1
+	`, userID, time.Now().UTC())
+	return err
+}
+
 // FindByID returns one user by primary key without loading unrelated rows.
 //
 // Author: __AUTHOR__
@@ -56,6 +73,7 @@ func (r UserRepo) BindTelegramChat(ctx context.Context, userID int64, chatID str
 // @param ctx Request context.
 // @param userID User id to look up.
 // @returns User model, whether it was found, and query error.
+// modified by __AUTHOR__ on 2026-07-01
 func (r UserRepo) FindByID(ctx context.Context, userID int64) (model.User, bool, error) {
 	var user model.User
 	err := r.DB.QueryRow(ctx, `
@@ -65,13 +83,25 @@ func (r UserRepo) FindByID(ctx context.Context, userID int64) (model.User, bool,
 			email_verified,
 			COALESCE(telegram_chat_id, ''),
 			telegram_delivery_enabled,
+			telegram_quiet_hours_enabled,
+			COALESCE(telegram_quiet_hours_start, ''),
+			COALESCE(telegram_quiet_hours_end, ''),
+			COALESCE(telegram_quiet_hours_timezone, ''),
+			telegram_digest_enabled,
+			telegram_digest_interval_min,
 			COALESCE(plan, ''),
 			COALESCE(status, ''),
 			created_at,
 			updated_at
 		FROM users
 		WHERE id = $1
-	`, userID).Scan(&user.ID, &user.Email, &user.PasswordHash, &user.EmailVerified, &user.TelegramChatID, &user.TelegramDeliveryEnabled, &user.Plan, &user.Status, &user.CreatedAt, &user.UpdatedAt)
+	`, userID).Scan(
+		&user.ID, &user.Email, &user.PasswordHash, &user.EmailVerified,
+		&user.TelegramChatID, &user.TelegramDeliveryEnabled,
+		&user.TelegramQuietHoursEnabled, &user.TelegramQuietHoursStart, &user.TelegramQuietHoursEnd, &user.TelegramQuietHoursTimezone,
+		&user.TelegramDigestEnabled, &user.TelegramDigestIntervalMin,
+		&user.Plan, &user.Status, &user.CreatedAt, &user.UpdatedAt,
+	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.User{}, false, nil
 	}
@@ -88,6 +118,7 @@ func (r UserRepo) FindByID(ctx context.Context, userID int64) (model.User, bool,
 // @param ctx Request context.
 // @param user Account user to create.
 // @returns Created user with database defaults applied.
+// modified by __AUTHOR__ on 2026-07-01
 func (r UserRepo) CreateWithPassword(ctx context.Context, user model.User) (model.User, error) {
 	now := time.Now().UTC()
 	if user.CreatedAt.IsZero() {
@@ -125,12 +156,24 @@ func (r UserRepo) CreateWithPassword(ctx context.Context, user model.User) (mode
 			email_verified,
 			COALESCE(telegram_chat_id, ''),
 			telegram_delivery_enabled,
+			telegram_quiet_hours_enabled,
+			COALESCE(telegram_quiet_hours_start, ''),
+			COALESCE(telegram_quiet_hours_end, ''),
+			COALESCE(telegram_quiet_hours_timezone, ''),
+			telegram_digest_enabled,
+			telegram_digest_interval_min,
 			COALESCE(plan, ''),
 			COALESCE(status, ''),
 			created_at,
 			updated_at
 	`, user.Email, user.PasswordHash, user.EmailVerified, user.TelegramChatID, telegramDeliveryEnabledForInsert(), user.Plan, user.Status, user.CreatedAt, user.UpdatedAt).
-		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.EmailVerified, &user.TelegramChatID, &user.TelegramDeliveryEnabled, &user.Plan, &user.Status, &user.CreatedAt, &user.UpdatedAt)
+		Scan(
+			&user.ID, &user.Email, &user.PasswordHash, &user.EmailVerified,
+			&user.TelegramChatID, &user.TelegramDeliveryEnabled,
+			&user.TelegramQuietHoursEnabled, &user.TelegramQuietHoursStart, &user.TelegramQuietHoursEnd, &user.TelegramQuietHoursTimezone,
+			&user.TelegramDigestEnabled, &user.TelegramDigestIntervalMin,
+			&user.Plan, &user.Status, &user.CreatedAt, &user.UpdatedAt,
+		)
 	if err != nil {
 		return model.User{}, err
 	}
@@ -144,6 +187,7 @@ func (r UserRepo) CreateWithPassword(ctx context.Context, user model.User) (mode
 // @param ctx Request context.
 // @param email Email address to look up.
 // @returns User model, whether it was found, and query error.
+// modified by __AUTHOR__ on 2026-07-01
 func (r UserRepo) FindByEmail(ctx context.Context, email string) (model.User, bool, error) {
 	var user model.User
 	err := r.DB.QueryRow(ctx, `
@@ -153,6 +197,12 @@ func (r UserRepo) FindByEmail(ctx context.Context, email string) (model.User, bo
 			email_verified,
 			COALESCE(telegram_chat_id, ''),
 			telegram_delivery_enabled,
+			telegram_quiet_hours_enabled,
+			COALESCE(telegram_quiet_hours_start, ''),
+			COALESCE(telegram_quiet_hours_end, ''),
+			COALESCE(telegram_quiet_hours_timezone, ''),
+			telegram_digest_enabled,
+			telegram_digest_interval_min,
 			COALESCE(plan, ''),
 			COALESCE(status, ''),
 			created_at,
@@ -161,7 +211,13 @@ func (r UserRepo) FindByEmail(ctx context.Context, email string) (model.User, bo
 		WHERE email IS NOT NULL
 			AND LOWER(email) = LOWER($1)
 		LIMIT 1
-	`, email).Scan(&user.ID, &user.Email, &user.PasswordHash, &user.EmailVerified, &user.TelegramChatID, &user.TelegramDeliveryEnabled, &user.Plan, &user.Status, &user.CreatedAt, &user.UpdatedAt)
+	`, email).Scan(
+		&user.ID, &user.Email, &user.PasswordHash, &user.EmailVerified,
+		&user.TelegramChatID, &user.TelegramDeliveryEnabled,
+		&user.TelegramQuietHoursEnabled, &user.TelegramQuietHoursStart, &user.TelegramQuietHoursEnd, &user.TelegramQuietHoursTimezone,
+		&user.TelegramDigestEnabled, &user.TelegramDigestIntervalMin,
+		&user.Plan, &user.Status, &user.CreatedAt, &user.UpdatedAt,
+	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.User{}, false, nil
 	}
@@ -186,6 +242,37 @@ func (r UserRepo) UpdateTelegramDeliveryEnabled(ctx context.Context, userID int6
 			updated_at = $3
 		WHERE id = $1
 	`, userID, enabled, time.Now().UTC())
+	return err
+}
+
+// UpdateTelegramNotificationPreferences updates quiet-hours and digest preferences for one user.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-01
+// @param ctx Request context.
+// @param userID User id to update.
+// @param preferences Quiet-hours and digest preference values.
+// @returns Error when persistence fails.
+func (r UserRepo) UpdateTelegramNotificationPreferences(ctx context.Context, userID int64, preferences model.UserNotificationPreferences) error {
+	_, err := r.DB.Exec(ctx, `
+		UPDATE users
+		SET telegram_quiet_hours_enabled = $2,
+			telegram_quiet_hours_start = $3,
+			telegram_quiet_hours_end = $4,
+			telegram_quiet_hours_timezone = $5,
+			telegram_digest_enabled = $6,
+			telegram_digest_interval_min = $7,
+			updated_at = $8
+		WHERE id = $1
+	`, userID,
+		preferences.TelegramQuietHoursEnabled,
+		preferences.TelegramQuietHoursStart,
+		preferences.TelegramQuietHoursEnd,
+		preferences.TelegramQuietHoursTimezone,
+		preferences.TelegramDigestEnabled,
+		preferences.TelegramDigestIntervalMin,
+		time.Now().UTC(),
+	)
 	return err
 }
 

@@ -171,6 +171,12 @@ select {
   align-items: center;
 }
 
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .rule-form {
   display: grid;
   grid-template-columns: repeat(5, minmax(120px, 1fr)) minmax(96px, auto) auto;
@@ -247,6 +253,14 @@ select {
   min-height: 0;
 }
 
+.preferences-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 12px;
+  align-items: end;
+  padding-top: 8px;
+}
+
 .list-row {
   min-height: 66px;
   padding: 12px 14px;
@@ -300,7 +314,8 @@ select {
   }
 
   .limit-grid,
-  .rule-form {
+  .rule-form,
+  .preferences-form {
     grid-template-columns: 1fr;
   }
 
