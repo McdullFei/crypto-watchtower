@@ -191,6 +191,34 @@ func TestUserRulesListUsesSessionUser(t *testing.T) {
 	}
 }
 
+// TestUserRulesListReturnsEmptyArray verifies empty user rule reads stay list-shaped for dashboard consumers.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-02
+func TestUserRulesListReturnsEmptyArray(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/user/rules", nil)
+	req.AddCookie(&http.Cookie{Name: "cw_session", Value: "session-token"})
+	rec := httptest.NewRecorder()
+
+	NewRouter(Dependencies{
+		Auth:  &stubAuthService{currentUser: model.User{ID: 42, Status: model.UserStatusActive, Plan: model.UserPlanFree}, currentOK: true},
+		Rules: &stubRuleService{},
+	}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
+	var payload struct {
+		Data json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if string(payload.Data) != "[]" {
+		t.Fatalf("expected empty user rules array, got %s", payload.Data)
+	}
+}
+
 // TestUserRulesPostUsesSessionUser verifies user rule writes use the session user as owner.
 //
 // Author: __AUTHOR__

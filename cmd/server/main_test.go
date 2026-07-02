@@ -104,6 +104,29 @@ func TestBuildNotificationSendersAddsWebhookWhenEnabled(t *testing.T) {
 	}
 }
 
+// TestBuildNotificationSendersRedactsDiscordWebhookSecret verifies webhook log targets do not expose URL secrets.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-02
+func TestBuildNotificationSendersRedactsDiscordWebhookSecret(t *testing.T) {
+	cfg := validServerConfig()
+	cfg.Telegram.Enabled = false
+	cfg.Webhook.Enabled = true
+	cfg.Webhook.URL = "https://discord.example/api/webhooks/123456/secret-token?wait=true"
+	cfg.Webhook.Channel = "discord-sit"
+	cfg.Webhook.TimeoutSec = 7
+
+	senders := buildNotificationSenders(cfg, serverStubSender{})
+
+	if len(senders) != 1 {
+		t.Fatalf("expected only webhook sender, got %d", len(senders))
+	}
+	target := senders[0].Target()
+	if target != "https://discord.example/api/webhooks/123456/***" {
+		t.Fatalf("expected redacted webhook target, got %q", target)
+	}
+}
+
 // TestBuildSummaryServiceUsesTemplateProvider verifies local summary provider wiring.
 //
 // Author: monsterfei

@@ -4,8 +4,10 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -271,6 +273,7 @@ func runtimeSymbols(cfg config.Config) []string {
 // @param cfg Runtime configuration.
 // @param telegram Existing Telegram sender.
 // @returns Channel-aware senders for the alert pipeline.
+// modified by __AUTHOR__ on 2026-07-02
 func buildNotificationSenders(cfg config.Config, telegram rule.Sender) []rule.NamedSender {
 	senders := make([]rule.NamedSender, 0, 2)
 	if cfg.Telegram.Enabled {
@@ -281,9 +284,29 @@ func buildNotificationSenders(cfg config.Config, telegram rule.Sender) []rule.Na
 		webhook := notifier.NewWebhookNotifier(cfg.Webhook.URL, channel, &http.Client{
 			Timeout: time.Duration(cfg.Webhook.TimeoutSec) * time.Second,
 		})
-		senders = append(senders, rule.NewNamedSender(channel, cfg.Webhook.URL, webhook))
+		senders = append(senders, rule.NewNamedSender(channel, safeWebhookLogTarget(cfg.Webhook.URL), webhook))
 	}
 	return senders
+}
+
+// safeWebhookLogTarget redacts Discord-compatible webhook secrets before persistence.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-02
+// @param rawURL Configured webhook URL used for delivery.
+// @returns Safe target identifier for notification logs.
+func safeWebhookLogTarget(rawURL string) string {
+	parsed, err := url.Parse(rawURL)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return "webhook"
+	}
+	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	if len(parts) >= 4 && parts[0] == "api" && parts[1] == "webhooks" {
+		return parsed.Scheme + "://" + parsed.Host + "/" + strings.Join(append(parts[:3], "***"), "/")
+	}
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	return parsed.String()
 }
 
 // buildSummaryService creates the optional AI market summary service from runtime config.

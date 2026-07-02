@@ -304,6 +304,7 @@ func handleUserNotificationsList(deps Dependencies) http.HandlerFunc {
 // Date: 2026-06-30
 // @param deps Runtime dependencies required by the handler.
 // @returns HTTP handler for user rule reads.
+// modified by __AUTHOR__ on 2026-07-02
 func handleUserRulesList(deps Dependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentUser, ok, err := requireDashboardUser(w, r, deps)
@@ -326,7 +327,7 @@ func handleUserRulesList(deps Dependencies) http.HandlerFunc {
 		writeJSON(w, http.StatusOK, map[string]any{
 			"code":    0,
 			"message": "ok",
-			"data":    rules,
+			"data":    nonNilSlice(rules),
 		})
 	}
 }

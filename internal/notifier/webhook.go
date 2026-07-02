@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -51,6 +52,7 @@ func NewWebhookNotifier(url string, channel string, client *http.Client) Webhook
 // @param ctx Request context.
 // @param alert Alert payload to format and send.
 // @returns Error when configuration, request creation, transport, or response status fails.
+// modified by __AUTHOR__ on 2026-07-02
 func (n WebhookNotifier) Send(ctx context.Context, alert model.Alert) error {
 	if n.URL == "" {
 		return errors.New("webhook notifier is not configured")
@@ -71,7 +73,11 @@ func (n WebhookNotifier) Send(ctx context.Context, alert model.Alert) error {
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := n.Client.Do(req)
 	if err != nil {
-		return err
+		var netErr net.Error
+		if errors.As(err, &netErr) && netErr.Timeout() {
+			return errors.New("webhook request failed: timeout")
+		}
+		return errors.New("webhook request failed")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {

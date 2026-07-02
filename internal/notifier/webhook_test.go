@@ -65,3 +65,20 @@ func TestWebhookNotifierReturnsErrorOnNon2xx(t *testing.T) {
 		t.Fatalf("expected status code in error, got %v", err)
 	}
 }
+
+// TestWebhookNotifierRedactsTransportErrorURL verifies transport errors do not leak webhook secrets.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-02
+func TestWebhookNotifierRedactsTransportErrorURL(t *testing.T) {
+	notifier := NewWebhookNotifier("http://127.0.0.1:1/webhook?secret=secret-token", "discord", &http.Client{})
+
+	err := notifier.Send(context.Background(), model.Alert{Title: "test"})
+
+	if err == nil {
+		t.Fatal("expected transport error")
+	}
+	if strings.Contains(err.Error(), "secret-token") || strings.Contains(err.Error(), "127.0.0.1:1/webhook") {
+		t.Fatalf("expected redacted transport error, got %v", err)
+	}
+}
