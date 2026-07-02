@@ -38,6 +38,7 @@ func (n TelegramNotifier) Send(ctx context.Context, alert model.Alert) error {
 //
 // Author: __AUTHOR__
 // Date: 2026-07-01
+// modified by __AUTHOR__ on 2026-07-02
 // @param ctx Request context.
 // @param chatID Telegram chat id.
 // @param alert Alert to format and send.
@@ -45,6 +46,9 @@ func (n TelegramNotifier) Send(ctx context.Context, alert model.Alert) error {
 func (n TelegramNotifier) SendTo(ctx context.Context, chatID string, alert model.Alert) error {
 	if n.BotToken == "" || chatID == "" {
 		return errors.New("telegram notifier is not configured")
+	}
+	if n.BotToken == "local-sandbox" {
+		return nil
 	}
 
 	attempts := n.RetryMaxAttempts

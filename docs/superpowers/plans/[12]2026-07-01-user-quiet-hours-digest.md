@@ -12,15 +12,15 @@
 
 ## Acceptance Criteria
 
-- [ ] Logged-in users can configure Telegram quiet hours using session-protected APIs.
-- [ ] Quiet hours are evaluated with an explicit user timezone and do not affect operator/admin notifications.
-- [ ] User-rule matches during quiet hours skip Telegram sends and write notification logs with status `quiet_hours`.
-- [ ] Logged-in users can enable or disable digest mode for Telegram.
-- [ ] Digest mode accumulates bounded user alerts and emits a summarized Telegram message on schedule.
-- [ ] Digest accumulation is bounded by user, time window, and maximum item count.
-- [ ] Dashboard shows quiet-hours controls, digest controls, and current preference state.
-- [ ] Existing direct Telegram delivery, unbind, delivery toggle, and notification-log APIs keep their behavior.
-- [ ] Verification gate passes.
+- [x] Logged-in users can configure Telegram quiet hours using session-protected APIs.
+- [x] Quiet hours are evaluated with an explicit user timezone and do not affect operator/admin notifications.
+- [x] User-rule matches during quiet hours skip Telegram sends and write notification logs with status `quiet_hours`.
+- [x] Logged-in users can enable or disable digest mode for Telegram.
+- [x] Digest mode accumulates bounded user alerts and emits a summarized Telegram message on schedule.
+- [x] Digest accumulation is bounded by user, time window, and maximum item count.
+- [x] Dashboard shows quiet-hours controls, digest controls, and current preference state.
+- [x] Existing direct Telegram delivery, unbind, delivery toggle, and notification-log APIs keep their behavior.
+- [x] Verification gate passes.
 
 ## Scope Boundary
 
@@ -52,7 +52,7 @@
 - [x] **Step 1: Write failing migration and repository tests**
 - [x] **Step 2: Add quiet-hours and digest preference storage**
 - [x] **Step 3: Implement bounded preference read/update methods**
-- [ ] **Step 4: Run storage and integration tests**
+- [x] **Step 4: Run storage and integration tests**
 
 ## Task 2: Preference API And Dashboard
 
@@ -67,7 +67,7 @@
 - [x] **Step 1: Write failing session-scoped preference API tests**
 - [x] **Step 2: Implement preference read/update endpoints**
 - [x] **Step 3: Render quiet-hours and digest controls in Dashboard**
-- [ ] **Step 4: Run API tests and `node --check`**
+- [x] **Step 4: Run API tests and `node --check`**
 
 ## Task 3: Quiet-Hours Fanout
 
@@ -79,7 +79,7 @@
 - [x] **Step 1: Write failing quiet-hours fanout tests**
 - [x] **Step 2: Skip Telegram sends during quiet hours**
 - [x] **Step 3: Record notification logs with status `quiet_hours`**
-- [ ] **Step 4: Run rule tests**
+- [x] **Step 4: Run rule tests**
 
 ## Task 4: Digest Accumulation
 
@@ -91,7 +91,7 @@
 - [x] **Step 1: Write failing bounded digest accumulation tests**
 - [x] **Step 2: Accumulate digest items by user and window**
 - [x] **Step 3: Emit digest Telegram messages on schedule**
-- [ ] **Step 4: Run rule and scheduler tests**
+- [x] **Step 4: Run rule and scheduler tests**
 
 ## Task 5: Docs And Verification
 
@@ -102,8 +102,8 @@
 - Modify: `docs/superpowers/plans/[12]2026-07-01-user-quiet-hours-digest.md`
 
 - [x] **Step 1: Document quiet hours and digest behavior**
-- [ ] **Step 2: Update master plan status**
-- [ ] **Step 3: Run verification gate**
+- [x] **Step 2: Update master plan status**
+- [x] **Step 3: Run verification gate**
 
 Run:
 
@@ -120,4 +120,5 @@ Expected: PASS.
 ## Execution Notes
 
 - 2026-07-01: Plan created after `[11]2026-07-01-user-notification-log-unbind.md` implementation. Scope is quiet-hours and digest controls only; new channels, paid entitlement changes, and full retry orchestration remain out of scope.
-- 2026-07-01: Implementation work added migration `007_user_notification_preferences.sql`, user preference fields/repository update path, session-scoped `/api/v1/user/telegram/preferences`, Dashboard quiet-hours/digest controls, quiet-hours fanout logging `quiet_hours`, bounded digest queues, and a scheduler-driven digest flush path. RED checks observed before implementation: missing migration file and missing repository model/methods; preference API returned 404 before implementation. Verification currently completed only for `node --check internal/api/dashboardui/app.js` and `git diff --check`; Docker Go verification is still required before marking the plan complete.
+- 2026-07-01: Implementation work added migration `007_user_notification_preferences.sql`, user preference fields/repository update path, session-scoped `/api/v1/user/telegram/preferences`, Dashboard quiet-hours/digest controls, quiet-hours fanout logging `quiet_hours`, bounded digest queues, and a scheduler-driven digest flush path. RED checks observed before implementation: missing migration file and missing repository model/methods; preference API returned 404 before implementation.
+- 2026-07-01: Verification passed with `node --check internal/api/dashboardui/app.js`; Docker Go 1.24 `go test ./...`; targeted real PostgreSQL/Redis integration `CW_INTEGRATION_TESTS=1 go test -tags integration ./internal/integration -run "UserNotificationPreferences|UserTelegramUnbind|UserDeliveryPreference|TelegramBindingRepositories|AuthRepositories" -v`; `APP_HTTP_PORT=18080 ./scripts/smoke-docker-compose.sh`; `curl -fsS http://127.0.0.1:18080/dashboard`; and `git diff --check`.

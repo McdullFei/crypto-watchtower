@@ -234,6 +234,25 @@ func TestTelegramPollerHandlesTestCommand(t *testing.T) {
 	}
 }
 
+// TestTelegramNotifierLocalSandboxSucceeds verifies SIT can exercise sent notification logs without real Telegram credentials.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-02
+func TestTelegramNotifierLocalSandboxSucceeds(t *testing.T) {
+	notifier := NewTelegramNotifier("local-sandbox", "sit-chat", nil)
+
+	err := notifier.Send(context.Background(), model.Alert{
+		Symbol:  "BTCUSDT",
+		Type:    "large_trade",
+		Title:   "Large trade detected",
+		Message: "exchange=binance symbol=BTCUSDT threshold=1000 notional=2000",
+	})
+
+	if err != nil {
+		t.Fatalf("expected local sandbox send to succeed, got %v", err)
+	}
+}
+
 func TestTelegramNotifierRetriesTemporaryFailures(t *testing.T) {
 	var attempts int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

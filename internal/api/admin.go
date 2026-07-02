@@ -81,6 +81,7 @@ type AdminService interface {
 // Author: monsterfei
 // Date: 2026-06-29
 // modified by monsterfei on 2026-06-29
+// modified by __AUTHOR__ on 2026-07-02
 func mountAdminRoutes(mux *http.ServeMux, deps Dependencies) {
 	mux.Handle("/admin", adminIndexHandler())
 	mux.Handle("/admin/", adminFileHandler())
@@ -111,7 +112,7 @@ func mountAdminRoutes(mux *http.ServeMux, deps Dependencies) {
 				writeInternalError(w, err)
 				return
 			}
-			writeJSON(w, http.StatusOK, map[string]any{"code": 0, "message": "ok", "data": data})
+			writeJSON(w, http.StatusOK, map[string]any{"code": 0, "message": "ok", "data": nonNilSlice(data)})
 		})
 	})
 	mux.HandleFunc("/api/v1/admin/alerts", func(w http.ResponseWriter, r *http.Request) {
@@ -121,7 +122,7 @@ func mountAdminRoutes(mux *http.ServeMux, deps Dependencies) {
 				writeInternalError(w, err)
 				return
 			}
-			writeJSON(w, http.StatusOK, map[string]any{"code": 0, "message": "ok", "data": data})
+			writeJSON(w, http.StatusOK, map[string]any{"code": 0, "message": "ok", "data": nonNilSlice(data)})
 		})
 	})
 	mux.HandleFunc("/api/v1/admin/events", func(w http.ResponseWriter, r *http.Request) {
@@ -131,7 +132,7 @@ func mountAdminRoutes(mux *http.ServeMux, deps Dependencies) {
 				writeInternalError(w, err)
 				return
 			}
-			writeJSON(w, http.StatusOK, map[string]any{"code": 0, "message": "ok", "data": data})
+			writeJSON(w, http.StatusOK, map[string]any{"code": 0, "message": "ok", "data": nonNilSlice(data)})
 		})
 	})
 	mux.HandleFunc("/api/v1/admin/notifications", func(w http.ResponseWriter, r *http.Request) {
@@ -141,9 +142,22 @@ func mountAdminRoutes(mux *http.ServeMux, deps Dependencies) {
 				writeInternalError(w, err)
 				return
 			}
-			writeJSON(w, http.StatusOK, map[string]any{"code": 0, "message": "ok", "data": data})
+			writeJSON(w, http.StatusOK, map[string]any{"code": 0, "message": "ok", "data": nonNilSlice(data)})
 		})
 	})
+}
+
+// nonNilSlice returns an empty slice when a list result is nil so JSON responses encode as [].
+//
+// Author: __AUTHOR__
+// Date: 2026-07-02
+// @param items List items returned by a service.
+// @returns A non-nil list for JSON encoding.
+func nonNilSlice[T any](items []T) []T {
+	if items == nil {
+		return []T{}
+	}
+	return items
 }
 
 func handleAdminRequest(w http.ResponseWriter, r *http.Request, deps Dependencies, fn func(AdminService, http.ResponseWriter, *http.Request)) {

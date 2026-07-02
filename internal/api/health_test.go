@@ -24,6 +24,25 @@ func (s *stubSender) Send(_ context.Context, alert model.Alert) error {
 	return nil
 }
 
+// stubEventHandler records replayed market events for API tests.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-02
+type stubEventHandler struct {
+	events []model.MarketEvent
+}
+
+// HandleEvent records one replayed market event.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-02
+// @param _ Request context.
+// @param event Market event submitted through the replay API.
+func (s *stubEventHandler) HandleEvent(_ context.Context, event model.MarketEvent) error {
+	s.events = append(s.events, event)
+	return nil
+}
+
 type stubRuleService struct {
 	listRules  []model.AlertRule
 	userRules  []model.AlertRule
@@ -234,6 +253,34 @@ func TestAlertsTestRouteInvokesSender(t *testing.T) {
 	}
 	if len(sender.alerts) != 1 {
 		t.Fatalf("expected 1 alert, got %d", len(sender.alerts))
+	}
+}
+
+// TestAdminReplayEventInvokesHandler verifies SIT replay events enter the normal event pipeline.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-02
+func TestAdminReplayEventInvokesHandler(t *testing.T) {
+	handler := &stubEventHandler{}
+	body := []byte(`{"id":"sit-event-1","exchange":"binance","market_type":"spot","symbol":"BTCUSDT","event_type":"agg_trade","side":"buy","price":100,"quantity":20,"notional":2000,"event_time":"2026-07-02T00:00:00Z"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/replay-event", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer secret")
+	rec := httptest.NewRecorder()
+
+	NewRouter(Dependencies{
+		APIBearerToken: "secret",
+		Events:         handler,
+	}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
+	if len(handler.events) != 1 {
+		t.Fatalf("expected 1 replayed event, got %d", len(handler.events))
+	}
+	event := handler.events[0]
+	if event.ID != "sit-event-1" || event.Exchange != "binance" || event.Symbol != "BTCUSDT" || event.Notional != 2000 {
+		t.Fatalf("unexpected replayed event: %+v", event)
 	}
 }
 

@@ -1,6 +1,7 @@
 package rule
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -25,5 +26,10 @@ func TestLargeTradeRuleTriggersWhenThresholdExceeded(t *testing.T) {
 	}
 	if alert.Type != "large_trade" {
 		t.Fatalf("unexpected alert type: %s", alert.Type)
+	}
+	for _, expected := range []string{"交易所: binance", "交易对: BTCUSDT", "规则: large_trade", "阈值: 100000.00 USDT", "成交额: 150000.00 USDT"} {
+		if !strings.Contains(alert.Message, expected) {
+			t.Fatalf("expected alert message to contain %q, got %q", expected, alert.Message)
+		}
 	}
 }

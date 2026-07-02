@@ -232,6 +232,28 @@ func TestAdminEventsReturnsList(t *testing.T) {
 	}
 }
 
+// TestAdminEventsReturnsEmptyArray verifies empty event queries encode as an empty JSON array.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-02
+func TestAdminEventsReturnsEmptyArray(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/events?symbol=NOPEUSDT&limit=20", nil)
+	req.Header.Set("Authorization", "Bearer secret")
+	rec := httptest.NewRecorder()
+
+	NewRouter(Dependencies{
+		APIBearerToken: "secret",
+		Admin:          &stubAdminService{},
+	}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"data":[]`) {
+		t.Fatalf("expected empty array data, got %s", rec.Body.String())
+	}
+}
+
 func TestAdminPageIsServed(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
 	rec := httptest.NewRecorder()

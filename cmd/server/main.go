@@ -175,6 +175,7 @@ func main() {
 		Auth:            authService,
 		TelegramBinding: telegramBindingService,
 		Telegram:        tg,
+		Events:          pipeline,
 		Collectors:      collectorHealthAdapters(marketCollectors),
 		Dependencies: []api.DependencyStatusProvider{
 			dependencyHealthAdapter{name: "postgres", check: postgres.Ping},

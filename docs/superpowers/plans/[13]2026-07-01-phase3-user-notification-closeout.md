@@ -12,13 +12,13 @@
 
 ## Acceptance Criteria
 
-- [ ] Plan `[12]` is fully checked and references current verification evidence.
-- [ ] User Telegram delivery states are covered: direct `sent`, `disabled`, `quiet_hours`, and `digested`.
-- [ ] Digest queues are bounded by user, time window, and item count, and scheduler wiring calls due flushes.
-- [ ] User preference APIs are session-scoped and do not honor query/body `user_id`.
-- [ ] Dashboard exposes delivery, unbind, quiet-hours, digest, alerts, and notification logs controls without JS syntax errors.
-- [ ] Docs explain the user notification behavior in README, user manual, and master plan.
-- [ ] Final acceptance suite passes or any blocked command is recorded with exact blocker.
+- [x] Plan `[12]` is fully checked and references current verification evidence.
+- [x] User Telegram delivery states are covered: direct `sent`, `disabled`, `quiet_hours`, and `digested`.
+- [x] Digest queues are bounded by user, time window, and item count, and scheduler wiring calls due flushes.
+- [x] User preference APIs are session-scoped and do not honor query/body `user_id`.
+- [x] Dashboard exposes delivery, unbind, quiet-hours, digest, alerts, and notification logs controls without JS syntax errors.
+- [x] Docs explain the user notification behavior in README, user manual, and master plan.
+- [x] Final acceptance suite passes or any blocked command is recorded with exact blocker.
 
 ## Scope Boundary
 
@@ -40,7 +40,7 @@
 - [x] **Step 1: Re-read plan [12] acceptance criteria**
 - [x] **Step 2: Map each criterion to code, tests, or docs evidence**
 - [x] **Step 3: Fix any scoped gap found by the audit**
-- [ ] **Step 4: Mark completed plan [12] tasks only after evidence exists**
+- [x] **Step 4: Mark completed plan [12] tasks only after evidence exists**
 
 ## Task 2: User Notification Regression Audit
 
@@ -79,31 +79,31 @@
 node --check internal/api/dashboardui/app.js
 ```
 
-- [ ] **Step 2: Run full Go test suite**
+- [x] **Step 2: Run full Go test suite**
 
 ```bash
 docker run --rm -v "$PWD":/workspace -w /workspace golang:1.24 sh -c '/usr/local/go/bin/go test ./...'
 ```
 
-- [ ] **Step 3: Run targeted integration tests**
+- [x] **Step 3: Run targeted integration tests**
 
 ```bash
 docker run --rm -v "$PWD":/workspace -w /workspace golang:1.24 sh -c '/usr/local/go/bin/go test -tags integration ./internal/integration -run "UserNotificationPreferences|UserTelegramUnbind|UserDeliveryPreference|TelegramBindingRepositories|AuthRepositories" -v'
 ```
 
-- [ ] **Step 4: Run Docker Compose smoke**
+- [x] **Step 4: Run Docker Compose smoke**
 
 ```bash
 APP_HTTP_PORT=18080 ./scripts/smoke-docker-compose.sh
 ```
 
-- [ ] **Step 5: Verify Dashboard route**
+- [x] **Step 5: Verify Dashboard route**
 
 ```bash
 curl -fsS http://127.0.0.1:18080/dashboard
 ```
 
-- [ ] **Step 6: Run diff whitespace check**
+- [x] **Step 6: Run diff whitespace check**
 
 ```bash
 git diff --check
@@ -114,4 +114,5 @@ Expected: all commands PASS. If Docker escalation is unavailable, record the exa
 ## Execution Notes
 
 - 2026-07-01: Plan created after implementation work for `[12]2026-07-01-user-quiet-hours-digest.md`. Scope is closeout, verification, and any narrowly required fixes found during acceptance.
-- 2026-07-01: Static closeout found and fixed Redis digest time-window pruning so digest queues are bounded by user, time window, and item count. `node --check internal/api/dashboardui/app.js` passed. `git diff --check` passed. Docker Go verification is blocked by the environment approval/usage-limit response: "You've hit your usage limit ... try again at 6:35 PM." Because Go/gofmt are not installed locally, plan [12] and plan [13] remain intentionally unchecked for Go/Docker acceptance.
+- 2026-07-01: Static closeout found and fixed Redis digest time-window pruning so digest queues are bounded by user, time window, and item count.
+- 2026-07-01: Final acceptance passed with `node --check internal/api/dashboardui/app.js`; Docker Go 1.24 `go test ./...`; targeted real PostgreSQL/Redis integration `CW_INTEGRATION_TESTS=1 go test -tags integration ./internal/integration -run "UserNotificationPreferences|UserTelegramUnbind|UserDeliveryPreference|TelegramBindingRepositories|AuthRepositories" -v`; `APP_HTTP_PORT=18080 ./scripts/smoke-docker-compose.sh`; `curl -fsS http://127.0.0.1:18080/dashboard`; and `git diff --check`.
