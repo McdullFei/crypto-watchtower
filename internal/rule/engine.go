@@ -261,7 +261,8 @@ func (p Pipeline) WithUserFanout(userRules UserRuleRepository, senderName string
 // Date: 2026-06-30
 // @param ctx Request context.
 // @param event Market event to evaluate.
-// @returns Error when persistence, deduplication, or at least one sender fails.
+// @returns Error when persistence or deduplication fails.
+// modified by __AUTHOR__ on 2026-07-03
 func (p Pipeline) HandleEvent(ctx context.Context, event model.MarketEvent) error {
 	alerts := p.engine.Evaluate(event)
 	for _, alert := range alerts {
@@ -279,7 +280,6 @@ func (p Pipeline) HandleEvent(ctx context.Context, event model.MarketEvent) erro
 		if err := p.repos.InsertAlert(ctx, alert); err != nil {
 			return fmt.Errorf("insert alert: %w", err)
 		}
-		var firstSendErr error
 		for _, sender := range p.senders {
 			currentSendErr := sender.Send(ctx, alert)
 			logStatus := "sent"
@@ -287,9 +287,6 @@ func (p Pipeline) HandleEvent(ctx context.Context, event model.MarketEvent) erro
 			if currentSendErr != nil {
 				logStatus = "failed"
 				logMessage = currentSendErr.Error()
-				if firstSendErr == nil {
-					firstSendErr = currentSendErr
-				}
 			}
 			if err := p.repos.InsertNotificationLog(ctx, model.NotificationLog{
 				AlertID:      alert.ID,
@@ -301,9 +298,6 @@ func (p Pipeline) HandleEvent(ctx context.Context, event model.MarketEvent) erro
 			}); err != nil {
 				return fmt.Errorf("insert notification log: %w", err)
 			}
-		}
-		if firstSendErr != nil {
-			return firstSendErr
 		}
 	}
 	if err := p.handleUserRules(ctx, event); err != nil {

@@ -297,6 +297,7 @@ func overrideBool(target *bool, key string) {
 // Author: monsterfei
 // Date: 2026-06-30
 // modified by monsterfei on 2026-06-30
+// modified by __AUTHOR__ on 2026-07-03
 func (c Config) Validate() error {
 	if c.Binance.Enabled {
 		if c.Binance.SpotWSBaseURL == "" {
@@ -361,6 +362,9 @@ func (c Config) Validate() error {
 		}
 		if c.Summary.Provider == "" {
 			return errors.New("summary.provider is required when summary is enabled")
+		}
+		if c.Summary.Provider != "template" && c.Summary.Provider != "openai_compatible" {
+			return errors.New("summary.provider must be template or openai_compatible")
 		}
 		if c.Summary.Disclaimer == "" {
 			return errors.New("summary.disclaimer is required when summary is enabled")

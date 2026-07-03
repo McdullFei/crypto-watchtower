@@ -53,6 +53,7 @@ func TestPipelineLogsEachNotificationChannel(t *testing.T) {
 //
 // Author: monsterfei
 // Date: 2026-06-30
+// modified by __AUTHOR__ on 2026-07-03
 func TestPipelineContinuesLoggingAfterSenderFailure(t *testing.T) {
 	repos := &fakePipelineRepositories{}
 	alert := model.Alert{
@@ -72,8 +73,8 @@ func TestPipelineContinuesLoggingAfterSenderFailure(t *testing.T) {
 	)
 
 	err := pipeline.HandleEvent(context.Background(), model.MarketEvent{ID: "event-1"})
-	if !errors.Is(err, errFakeSender) {
-		t.Fatalf("expected sender error, got %v", err)
+	if err != nil {
+		t.Fatalf("expected sender error to be logged without failing event handling, got %v", err)
 	}
 
 	if len(repos.notificationLogs) != 2 {
@@ -84,6 +85,39 @@ func TestPipelineContinuesLoggingAfterSenderFailure(t *testing.T) {
 	}
 	if repos.notificationLogs[1].Channel != "discord" || repos.notificationLogs[1].Status != "sent" || repos.notificationLogs[1].ErrorMessage != "" {
 		t.Fatalf("unexpected successful log: %#v", repos.notificationLogs[1])
+	}
+}
+
+// TestPipelineDoesNotFailEventWhenSenderFails verifies notification delivery errors stay isolated from event handling.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-03
+func TestPipelineDoesNotFailEventWhenSenderFails(t *testing.T) {
+	repos := &fakePipelineRepositories{}
+	alert := model.Alert{
+		ID:         "alert-1",
+		Exchange:   "binance",
+		Symbol:     "BTCUSDT",
+		Type:       "large_trade",
+		TriggerKey: "binance:BTCUSDT:large_trade",
+		EventID:    "event-1",
+	}
+	pipeline := NewPipeline(
+		fakeEvaluator{alerts: []model.Alert{alert}},
+		repos,
+		nil,
+		NewNamedSender("discord", "https://discord.example/webhook", fakeSender{err: errFakeSender}),
+	)
+
+	err := pipeline.HandleEvent(context.Background(), model.MarketEvent{ID: "event-1"})
+	if err != nil {
+		t.Fatalf("expected sender error to be logged without failing event handling, got %v", err)
+	}
+	if len(repos.alerts) != 1 || len(repos.notificationLogs) != 1 {
+		t.Fatalf("expected alert and notification log to be stored, got alerts=%+v logs=%+v", repos.alerts, repos.notificationLogs)
+	}
+	if repos.notificationLogs[0].Status != "failed" || repos.notificationLogs[0].ErrorMessage == "" {
+		t.Fatalf("expected failed notification log, got %+v", repos.notificationLogs[0])
 	}
 }
 

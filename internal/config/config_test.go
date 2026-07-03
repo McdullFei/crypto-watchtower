@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -293,6 +294,28 @@ func TestLoadAppliesSummaryEnvOverrides(t *testing.T) {
 	}
 	if !cfg.Summary.Enabled || cfg.Summary.IntervalSec != 900 || cfg.Summary.WindowSec != 900 || cfg.Summary.MaxItems != 40 || cfg.Summary.Provider != "template" || cfg.Summary.Disclaimer != "不构成投资建议" || cfg.Summary.APIBaseURL != "https://api.example.test/v1" || cfg.Summary.APIKey != "summary-key" || cfg.Summary.Model != "summary-model" || cfg.Summary.TimeoutSec != 8 {
 		t.Fatalf("unexpected summary config: %+v", cfg.Summary)
+	}
+}
+
+// TestValidateRejectsUnknownSummaryProvider verifies enabled summaries only accept supported providers.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-03
+func TestValidateRejectsUnknownSummaryProvider(t *testing.T) {
+	cfg := validConfig()
+	cfg.Summary.Enabled = true
+	cfg.Summary.Provider = "unknown"
+	cfg.Summary.Disclaimer = "不构成投资建议"
+	cfg.Summary.IntervalSec = 900
+	cfg.Summary.WindowSec = 900
+	cfg.Summary.MaxItems = 50
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected validation error for unknown summary provider")
+	}
+	if !strings.Contains(err.Error(), "summary.provider must be template or openai_compatible") {
+		t.Fatalf("unexpected validation error: %v", err)
 	}
 }
 

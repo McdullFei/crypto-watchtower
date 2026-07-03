@@ -90,7 +90,8 @@ func main() {
 			ExposeResetToken: cfg.App.Env != "prod" && cfg.Auth.ExposeResetTokenInDev,
 		},
 	)
-	pipeline := rule.NewPipeline(engine, repos, redisClient, buildNotificationSenders(cfg, tg)...).
+	notificationSenders := buildNotificationSenders(cfg, tg)
+	pipeline := rule.NewPipeline(engine, repos, redisClient, notificationSenders...).
 		WithUserFanout(repos.AlertRules, "telegram", tg)
 	userDigestJob := scheduler.NewUserDigestJob(pipeline, time.Minute)
 	go userDigestJob.Start(ctx)
@@ -140,7 +141,7 @@ func main() {
 	}
 
 	if cfg.Summary.Enabled {
-		summaryService := buildSummaryService(cfg, repos)
+		summaryService := buildSummaryService(cfg, repos, summaryNotificationSenders(notificationSenders)...)
 		summaryJob := scheduler.NewSummaryJob(summaryService, time.Duration(cfg.Summary.IntervalSec)*time.Second)
 		go summaryJob.Start(ctx)
 	}
@@ -289,6 +290,20 @@ func buildNotificationSenders(cfg config.Config, telegram rule.Sender) []rule.Na
 	return senders
 }
 
+// summaryNotificationSenders adapts alert pipeline senders for summary delivery.
+//
+// Author: __AUTHOR__
+// Date: 2026-07-03
+// @param senders Alert pipeline notification senders.
+// @returns Summary-compatible notification senders.
+func summaryNotificationSenders(senders []rule.NamedSender) []summary.NamedSender {
+	out := make([]summary.NamedSender, 0, len(senders))
+	for _, sender := range senders {
+		out = append(out, sender)
+	}
+	return out
+}
+
 // safeWebhookLogTarget redacts Discord-compatible webhook secrets before persistence.
 //
 // Author: __AUTHOR__
@@ -315,8 +330,10 @@ func safeWebhookLogTarget(rawURL string) string {
 // Date: 2026-06-30
 // @param cfg Runtime configuration.
 // @param repos Storage repositories.
+// @param senders Optional notification senders for generated summaries.
 // @returns Summary service wired with bounded aggregation and configured generator.
-func buildSummaryService(cfg config.Config, repos *storage.Repositories) summary.Service {
+// modified by __AUTHOR__ on 2026-07-03
+func buildSummaryService(cfg config.Config, repos *storage.Repositories, senders ...summary.NamedSender) summary.Service {
 	aggregator := summary.NewAggregator(repos.Alerts, repos.MarketEvents, summary.Config{MaxItems: cfg.Summary.MaxItems})
 	var generator summary.Generator = summary.NewTemplateGenerator(cfg.Summary.Disclaimer)
 	if cfg.Summary.Provider == "openai_compatible" {
@@ -329,11 +346,13 @@ func buildSummaryService(cfg config.Config, repos *storage.Repositories) summary
 		}, nil)
 	}
 	return summary.Service{
-		Aggregator: aggregator,
-		Generator:  generator,
-		Store:      repos.MarketSummaries,
-		Provider:   cfg.Summary.Provider,
-		Window:     time.Duration(cfg.Summary.WindowSec) * time.Second,
+		Aggregator:    aggregator,
+		Generator:     generator,
+		Store:         repos.MarketSummaries,
+		Notifications: repos,
+		Senders:       senders,
+		Provider:      cfg.Summary.Provider,
+		Window:        time.Duration(cfg.Summary.WindowSec) * time.Second,
 	}
 }
 
