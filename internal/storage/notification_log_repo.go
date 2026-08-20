@@ -58,7 +58,7 @@ func (r NotificationLogRepo) List(ctx context.Context, filter ListFilter) ([]mod
 
 // LatestForUser returns recent notification logs owned by one user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param userID User id to filter.

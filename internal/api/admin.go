@@ -53,9 +53,9 @@ type AdminSymbolCount struct {
 
 // AdminListFilter carries bounded Admin list filters.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
-// modified by __AUTHOR__ on 2026-06-30
+// modified by monsterfei on 2026-06-30
 type AdminListFilter struct {
 	Exchange  string
 	Symbol    string
@@ -81,7 +81,7 @@ type AdminService interface {
 // Author: monsterfei
 // Date: 2026-06-29
 // modified by monsterfei on 2026-06-29
-// modified by __AUTHOR__ on 2026-07-02
+// modified by monsterfei on 2026-07-02
 func mountAdminRoutes(mux *http.ServeMux, deps Dependencies) {
 	mux.Handle("/admin", adminIndexHandler())
 	mux.Handle("/admin/", adminFileHandler())
@@ -149,7 +149,7 @@ func mountAdminRoutes(mux *http.ServeMux, deps Dependencies) {
 
 // nonNilSlice returns an empty slice when a list result is nil so JSON responses encode as [].
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-02
 // @param items List items returned by a service.
 // @returns A non-nil list for JSON encoding.
@@ -178,11 +178,11 @@ func handleAdminRequest(w http.ResponseWriter, r *http.Request, deps Dependencie
 
 // adminFilterFromRequest parses shared Admin list filters from query parameters.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param r HTTP request.
 // @returns Admin list filter.
-// modified by __AUTHOR__ on 2026-06-30
+// modified by monsterfei on 2026-06-30
 func adminFilterFromRequest(r *http.Request) AdminListFilter {
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	var userID *int64

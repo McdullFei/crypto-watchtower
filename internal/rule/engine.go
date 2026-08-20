@@ -49,7 +49,7 @@ type windowKey struct {
 
 // userWindowKey isolates user-rule window state from global system rule state.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type userWindowKey struct {
 	userID     int64
@@ -72,7 +72,7 @@ type tradeWindowState struct {
 
 // userDigestItem stores one queued user alert for digest delivery.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type userDigestItem struct {
 	UserID      int64       `json:"user_id"`
@@ -84,7 +84,7 @@ type userDigestItem struct {
 
 // userDigestState stores bounded digest items for one user in memory.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type userDigestState struct {
 	items []userDigestItem
@@ -194,13 +194,13 @@ type pipelineRepositories interface {
 
 // UserRuleTarget combines one user-scoped rule with its owning account.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type UserRuleTarget = model.UserRuleTarget
 
 // UserRuleRepository defines bounded user-rule lookup for fanout.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type UserRuleRepository interface {
 	ListActiveUserRulesForEvent(context.Context, model.MarketEvent, int) ([]UserRuleTarget, error)
@@ -208,7 +208,7 @@ type UserRuleRepository interface {
 
 // UserAlertSender sends alerts to a user-specific notification target.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type UserAlertSender interface {
 	SendTo(context.Context, string, model.Alert) error
@@ -236,7 +236,7 @@ func NewPipeline(engine Evaluator, repos pipelineRepositories, redis redis.Unive
 
 // WithUserFanout enables user-scoped rule evaluation and targeted notification delivery.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param userRules Bounded user rule repository.
 // @param senderName Notification channel name for logs.
@@ -262,7 +262,7 @@ func (p Pipeline) WithUserFanout(userRules UserRuleRepository, senderName string
 // @param ctx Request context.
 // @param event Market event to evaluate.
 // @returns Error when persistence or deduplication fails.
-// modified by __AUTHOR__ on 2026-07-03
+// modified by monsterfei on 2026-07-03
 func (p Pipeline) HandleEvent(ctx context.Context, event model.MarketEvent) error {
 	alerts := p.engine.Evaluate(event)
 	for _, alert := range alerts {
@@ -308,7 +308,7 @@ func (p Pipeline) HandleEvent(ctx context.Context, event model.MarketEvent) erro
 
 // handleUserRules evaluates bounded user-scoped rules and sends alerts to bound users.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param event Market event to evaluate.
@@ -396,7 +396,7 @@ func (p Pipeline) handleUserRules(ctx context.Context, event model.MarketEvent) 
 
 // FlushUserDigests sends due user digest summaries and clears flushed queues.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param now Current time used for due-window evaluation.
@@ -416,7 +416,7 @@ func (p Pipeline) FlushUserDigests(ctx context.Context, now time.Time) error {
 
 // queueUserDigest appends one alert to a bounded per-user digest queue.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param user User that owns the digest queue.
@@ -443,7 +443,7 @@ func (p Pipeline) queueUserDigest(ctx context.Context, user model.User, alert mo
 
 // queueMemoryUserDigest appends and trims one in-process user digest queue.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param item Digest item to queue.
 func (p Pipeline) queueMemoryUserDigest(item userDigestItem) {
@@ -461,7 +461,7 @@ func (p Pipeline) queueMemoryUserDigest(item userDigestItem) {
 
 // queueRedisUserDigest appends and trims one Redis-backed user digest queue.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param item Digest item to queue.
@@ -489,7 +489,7 @@ func (p Pipeline) queueRedisUserDigest(ctx context.Context, item userDigestItem)
 
 // pruneRedisUserDigest keeps a Redis digest queue inside the configured time and count bounds.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param key Redis list key.
@@ -527,7 +527,7 @@ func (p Pipeline) pruneRedisUserDigest(ctx context.Context, key string, now time
 
 // flushMemoryUserDigests sends due in-process digest summaries.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param now Current time used for due-window evaluation.
@@ -557,7 +557,7 @@ func (p Pipeline) flushMemoryUserDigests(ctx context.Context, now time.Time) err
 
 // flushRedisUserDigests sends due Redis-backed digest summaries.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param now Current time used for due-window evaluation.
@@ -603,7 +603,7 @@ func (p Pipeline) flushRedisUserDigests(ctx context.Context, now time.Time) erro
 
 // sendUserDigest sends one summarized digest alert.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param now Current time used for summary metadata.
@@ -632,7 +632,7 @@ func (p Pipeline) sendUserDigest(ctx context.Context, now time.Time, items []use
 
 // digestMessage builds a bounded human-readable digest body.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param items Digest items to summarize.
 // @returns Digest body text.
@@ -647,7 +647,7 @@ func digestMessage(items []userDigestItem) string {
 
 // digestDue reports whether queued items are ready to flush.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param items Digest items for one user.
 // @param now Current time used for due-window evaluation.
@@ -662,7 +662,7 @@ func digestDue(items []userDigestItem, now time.Time) bool {
 
 // pruneDigestItems drops items outside the oldest queued item's configured window.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param items Digest items to prune.
 // @param now Current time used for time-window pruning.
@@ -685,7 +685,7 @@ func pruneDigestItems(items []userDigestItem, now time.Time) []userDigestItem {
 
 // trimDigestItems bounds a digest queue by maximum item count.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param items Digest items to trim.
 // @param maxItems Maximum retained items.
@@ -699,7 +699,7 @@ func trimDigestItems(items []userDigestItem, maxItems int) []userDigestItem {
 
 // digestMaxItems returns the configured per-user digest item cap.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @returns Maximum retained digest items per user.
 func (p Pipeline) digestMaxItems() int {
@@ -711,7 +711,7 @@ func (p Pipeline) digestMaxItems() int {
 
 // digestIntervalMin normalizes digest interval minutes.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param value Requested interval minutes.
 // @returns Bounded interval minutes.
@@ -727,7 +727,7 @@ func digestIntervalMin(value int) int {
 
 // userDigestRedisKey returns a Redis key for one user's digest queue.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param userID User id that owns the digest queue.
 // @returns Redis list key.
@@ -737,7 +737,7 @@ func userDigestRedisKey(userID int64) string {
 
 // userQuietHoursActive reports whether a user's quiet-hours window contains the event time.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param user User containing quiet-hours preferences.
 // @param eventTime Event time to evaluate.
@@ -773,7 +773,7 @@ func userQuietHoursActive(user model.User, eventTime time.Time) bool {
 
 // evaluateUserRule evaluates one user-scoped rule without changing the global system engine.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param event Market event to evaluate.
@@ -809,7 +809,7 @@ func (p Pipeline) evaluateUserRule(ctx context.Context, event model.MarketEvent,
 
 // evaluateUserWindowRule evaluates one user large-trade window rule with isolated bounded state.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param event Market event to evaluate.
@@ -851,7 +851,7 @@ func (p Pipeline) evaluateUserWindowRule(ctx context.Context, event model.Market
 
 // updateUserWindow stores one user window event and returns totals before and after the update.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param event Market event entering the window.
@@ -868,7 +868,7 @@ func (p Pipeline) updateUserWindow(ctx context.Context, event model.MarketEvent,
 
 // updateMemoryUserWindow stores user window state in-process when Redis is not configured.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param event Market event entering the window.
 // @param userID User id for key isolation.
@@ -910,7 +910,7 @@ func (p Pipeline) updateMemoryUserWindow(event model.MarketEvent, userID int64, 
 
 // userWindowTotal returns current in-process user window total after an update.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param event Market event identifying the window.
 // @param userID User id for key isolation.
@@ -933,7 +933,7 @@ func (p Pipeline) userWindowTotal(event model.MarketEvent, userID int64, ruleID 
 
 // updateRedisUserWindow stores user window state in Redis sorted sets with expiry.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param event Market event entering the window.
@@ -964,7 +964,7 @@ func (p Pipeline) updateRedisUserWindow(ctx context.Context, event model.MarketE
 
 // sumWindowMembers sums notional values encoded in Redis window members.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param members Redis sorted-set member strings formatted as event_id:notional.
 // @returns Total notional for parseable members.
@@ -1005,7 +1005,7 @@ func (p Pipeline) allowAlert(ctx context.Context, alert model.Alert) (bool, erro
 
 // allowUserAlert applies user-specific dedupe and rate-limit keys.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param alert Alert to dedupe.

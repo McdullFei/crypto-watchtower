@@ -13,7 +13,7 @@ import (
 
 // SessionRepo persists user login sessions.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type SessionRepo struct {
 	DB *pgxpool.Pool
@@ -21,7 +21,7 @@ type SessionRepo struct {
 
 // Create stores one login session token hash.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param session Session to persist.
@@ -50,7 +50,7 @@ func (r SessionRepo) Create(ctx context.Context, session model.UserSession) erro
 
 // FindActiveByHash returns one unexpired active session by token hash.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param tokenHash SHA-256 token hash.
@@ -83,7 +83,7 @@ func (r SessionRepo) FindActiveByHash(ctx context.Context, tokenHash string, now
 
 // RevokeByHash marks one session token hash as revoked.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param tokenHash SHA-256 token hash.

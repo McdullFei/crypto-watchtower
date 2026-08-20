@@ -56,7 +56,7 @@ func TestMigrationRunnerReturnsExecutionError(t *testing.T) {
 
 // TestAuthMigrationAddsSessionAndPasswordTables verifies auth schema changes are present.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func TestAuthMigrationAddsSessionAndPasswordTables(t *testing.T) {
 	raw, err := os.ReadFile("../../migrations/004_auth_subscription.sql")
@@ -80,7 +80,7 @@ func TestAuthMigrationAddsSessionAndPasswordTables(t *testing.T) {
 
 // TestTelegramBindingMigrationAddsTokenTable verifies Telegram binding schema changes are present.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestTelegramBindingMigrationAddsTokenTable(t *testing.T) {
 	raw, err := os.ReadFile("../../migrations/005_user_telegram_binding.sql")
@@ -102,7 +102,7 @@ func TestTelegramBindingMigrationAddsTokenTable(t *testing.T) {
 
 // TestUserDeliveryPreferenceMigrationAddsTelegramSwitch verifies user delivery preference schema changes are present.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestUserDeliveryPreferenceMigrationAddsTelegramSwitch(t *testing.T) {
 	raw, err := os.ReadFile("../../migrations/006_user_delivery_preferences.sql")
@@ -123,7 +123,7 @@ func TestUserDeliveryPreferenceMigrationAddsTelegramSwitch(t *testing.T) {
 
 // TestUserNotificationPreferencesMigrationAddsQuietHoursAndDigest verifies quiet-hours and digest schema changes are present.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestUserNotificationPreferencesMigrationAddsQuietHoursAndDigest(t *testing.T) {
 	raw, err := os.ReadFile("../../migrations/007_user_notification_preferences.sql")

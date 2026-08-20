@@ -106,7 +106,7 @@ func TestBuildNotificationSendersAddsWebhookWhenEnabled(t *testing.T) {
 
 // TestBuildNotificationSendersRedactsDiscordWebhookSecret verifies webhook log targets do not expose URL secrets.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-02
 func TestBuildNotificationSendersRedactsDiscordWebhookSecret(t *testing.T) {
 	cfg := validServerConfig()

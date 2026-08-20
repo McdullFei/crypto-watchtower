@@ -299,7 +299,7 @@ func TestLoadAppliesSummaryEnvOverrides(t *testing.T) {
 
 // TestValidateRejectsUnknownSummaryProvider verifies enabled summaries only accept supported providers.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-03
 func TestValidateRejectsUnknownSummaryProvider(t *testing.T) {
 	cfg := validConfig()
@@ -321,7 +321,7 @@ func TestValidateRejectsUnknownSummaryProvider(t *testing.T) {
 
 // TestLoadAppliesAuthDefaultsAndEnvOverrides verifies session auth settings default and override correctly.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestLoadAppliesAuthDefaultsAndEnvOverrides(t *testing.T) {
 	dir := t.TempDir()
@@ -358,7 +358,7 @@ func TestLoadAppliesAuthDefaultsAndEnvOverrides(t *testing.T) {
 //
 // Author: monsterfei
 // Date: 2026-06-29
-// modified by __AUTHOR__ on 2026-07-01
+// modified by monsterfei on 2026-07-01
 func validConfig() Config {
 	cfg := Config{}
 	cfg.API.BearerToken = "token"

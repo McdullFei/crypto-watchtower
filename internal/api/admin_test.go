@@ -181,7 +181,7 @@ func TestAdminAlertsParsesExchangeFilter(t *testing.T) {
 
 // TestAdminRulesParsesUserRuleFilters verifies Admin rules can filter user-scoped rules.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func TestAdminRulesParsesUserRuleFilters(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/rules?scope=user&user_id=42&limit=10", nil)
@@ -234,7 +234,7 @@ func TestAdminEventsReturnsList(t *testing.T) {
 
 // TestAdminEventsReturnsEmptyArray verifies empty event queries encode as an empty JSON array.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-02
 func TestAdminEventsReturnsEmptyArray(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/events?symbol=NOPEUSDT&limit=20", nil)

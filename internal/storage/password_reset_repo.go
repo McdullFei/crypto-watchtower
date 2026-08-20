@@ -13,7 +13,7 @@ import (
 
 // PasswordResetRepo persists expiring password reset tokens.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type PasswordResetRepo struct {
 	DB *pgxpool.Pool
@@ -21,7 +21,7 @@ type PasswordResetRepo struct {
 
 // Create stores one password reset token hash.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param token Password reset token to persist.
@@ -45,7 +45,7 @@ func (r PasswordResetRepo) Create(ctx context.Context, token model.PasswordReset
 
 // FindActiveByHash returns one unexpired unused password reset token by hash.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param tokenHash SHA-256 token hash.
@@ -77,7 +77,7 @@ func (r PasswordResetRepo) FindActiveByHash(ctx context.Context, tokenHash strin
 
 // MarkUsed consumes one password reset token hash.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param tokenHash SHA-256 token hash.

@@ -53,7 +53,7 @@ func TestPipelineLogsEachNotificationChannel(t *testing.T) {
 //
 // Author: monsterfei
 // Date: 2026-06-30
-// modified by __AUTHOR__ on 2026-07-03
+// modified by monsterfei on 2026-07-03
 func TestPipelineContinuesLoggingAfterSenderFailure(t *testing.T) {
 	repos := &fakePipelineRepositories{}
 	alert := model.Alert{
@@ -90,7 +90,7 @@ func TestPipelineContinuesLoggingAfterSenderFailure(t *testing.T) {
 
 // TestPipelineDoesNotFailEventWhenSenderFails verifies notification delivery errors stay isolated from event handling.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-03
 func TestPipelineDoesNotFailEventWhenSenderFails(t *testing.T) {
 	repos := &fakePipelineRepositories{}
@@ -123,7 +123,7 @@ func TestPipelineDoesNotFailEventWhenSenderFails(t *testing.T) {
 
 // TestPipelineDeliversMatchedUserRulesToBoundUsers verifies user rule fanout writes user notification logs.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestPipelineDeliversMatchedUserRulesToBoundUsers(t *testing.T) {
 	userID := int64(42)
@@ -183,7 +183,7 @@ func TestPipelineDeliversMatchedUserRulesToBoundUsers(t *testing.T) {
 
 // TestPipelineSkipsUnboundOrDisabledUserRuleTargets verifies invalid user targets do not send notifications.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestPipelineSkipsUnboundOrDisabledUserRuleTargets(t *testing.T) {
 	userID := int64(42)
@@ -221,7 +221,7 @@ func TestPipelineSkipsUnboundOrDisabledUserRuleTargets(t *testing.T) {
 
 // TestPipelineDeliversUserLargeTradeWindowRules verifies user window rules use isolated fanout evaluation.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestPipelineDeliversUserLargeTradeWindowRules(t *testing.T) {
 	userID := int64(42)
@@ -293,7 +293,7 @@ func TestPipelineDeliversUserLargeTradeWindowRules(t *testing.T) {
 
 // TestPipelineRecordsDisabledTelegramDelivery verifies disabled user delivery skips sends but logs intent.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestPipelineRecordsDisabledTelegramDelivery(t *testing.T) {
 	userID := int64(42)
@@ -347,7 +347,7 @@ func TestPipelineRecordsDisabledTelegramDelivery(t *testing.T) {
 
 // TestPipelineRecordsQuietHoursWithoutSending verifies user quiet hours suppress Telegram delivery.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestPipelineRecordsQuietHoursWithoutSending(t *testing.T) {
 	userID := int64(42)
@@ -405,7 +405,7 @@ func TestPipelineRecordsQuietHoursWithoutSending(t *testing.T) {
 
 // TestPipelineQueuesAndFlushesDigest verifies digest mode queues bounded alerts and later sends a summary.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestPipelineQueuesAndFlushesDigest(t *testing.T) {
 	userID := int64(42)
@@ -499,7 +499,7 @@ func (r fakeUserRuleRepository) ListActiveUserRulesForEvent(context.Context, mod
 
 // fakeUserAlertSender records user-targeted sends for rule pipeline tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type fakeUserAlertSender struct {
 	targets []string
@@ -509,7 +509,7 @@ type fakeUserAlertSender struct {
 
 // SendTo records one targeted alert send for rule pipeline tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param target User notification target.
 // @param alert Alert sent to the target.

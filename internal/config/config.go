@@ -58,7 +58,7 @@ type RulesConfig struct {
 
 // AuthConfig contains account-session settings.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type AuthConfig struct {
 	SessionTTLHours       int  `yaml:"session_ttl_hours"`
@@ -297,7 +297,7 @@ func overrideBool(target *bool, key string) {
 // Author: monsterfei
 // Date: 2026-06-30
 // modified by monsterfei on 2026-06-30
-// modified by __AUTHOR__ on 2026-07-03
+// modified by monsterfei on 2026-07-03
 func (c Config) Validate() error {
 	if c.Binance.Enabled {
 		if c.Binance.SpotWSBaseURL == "" {

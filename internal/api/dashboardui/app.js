@@ -73,7 +73,7 @@ ruleForm.addEventListener("submit", async (event) => {
 /**
  * Registers a user account and loads the session dashboard.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-07-01
  */
 async function register() {
@@ -94,7 +94,7 @@ async function register() {
 /**
  * Creates a short-lived Telegram binding token for the current account.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-07-01
  */
 async function createTelegramBindingToken() {
@@ -111,7 +111,7 @@ async function createTelegramBindingToken() {
 /**
  * Clears Telegram binding for the current account.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-07-01
  */
 async function unbindTelegram() {
@@ -132,7 +132,7 @@ async function unbindTelegram() {
 /**
  * Updates Telegram delivery preference for the current account.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-07-01
  * @param enabled Whether Telegram delivery should be enabled.
  */
@@ -154,7 +154,7 @@ async function updateTelegramDelivery(enabled) {
 /**
  * Updates quiet-hours and digest preferences for the current account.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-07-01
  */
 async function updateTelegramPreferences() {
@@ -182,7 +182,7 @@ async function updateTelegramPreferences() {
 /**
  * Logs in and loads the session dashboard.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-07-01
  */
 async function login() {
@@ -203,7 +203,7 @@ async function login() {
 /**
  * Logs out and clears rendered session data.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-07-01
  */
 async function logout() {
@@ -220,7 +220,7 @@ async function logout() {
 /**
  * Changes the current account password.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-07-01
  */
 async function changePassword() {
@@ -240,9 +240,9 @@ async function changePassword() {
 /**
  * Loads profile, personal rules, alert history, and notification logs.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-06-30
- * modified by __AUTHOR__ on 2026-07-01
+ * modified by monsterfei on 2026-07-01
  */
 async function loadDashboard() {
   setStatus("Loading...");
@@ -268,9 +268,9 @@ async function loadDashboard() {
 /**
  * Saves one user-owned alert rule and reloads the dashboard.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-06-30
- * modified by __AUTHOR__ on 2026-07-01
+ * modified by monsterfei on 2026-07-01
  */
 async function saveRule() {
   const payload = {
@@ -294,9 +294,9 @@ async function saveRule() {
 /**
  * Renders Telegram binding and subscription state.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-06-30
- * modified by __AUTHOR__ on 2026-07-01
+ * modified by monsterfei on 2026-07-01
  * @param profile User profile response payload.
  */
 function renderProfile(profile) {
@@ -318,7 +318,7 @@ function renderProfile(profile) {
 /**
  * Renders quiet-hours and digest preferences.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-07-01
  * @param preferences Telegram notification preference payload.
  */
@@ -334,7 +334,7 @@ function renderTelegramPreferences(preferences) {
 /**
  * Renders subscription entitlement counters.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-07-01
  * @param limits Plan limit payload.
  */
@@ -357,7 +357,7 @@ function renderPlanLimits(limits) {
 /**
  * Renders a Telegram /start binding command.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-07-01
  * @param data Binding token payload.
  */
@@ -370,7 +370,7 @@ function renderTelegramBindingToken(data) {
 /**
  * Renders personal alert rules.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-06-30
  * @param rules Alert rule records.
  */
@@ -384,7 +384,7 @@ function renderRules(rules) {
 /**
  * Renders personal alert history.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-06-30
  * @param alerts Alert records.
  */
@@ -398,7 +398,7 @@ function renderAlerts(alerts) {
 /**
  * Renders personal notification delivery logs.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-07-01
  * @param notifications Notification log records.
  */
@@ -412,7 +412,7 @@ function renderNotifications(notifications) {
 /**
  * Clears rendered dashboard data.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-07-01
  */
 function clearDashboard() {
@@ -432,7 +432,7 @@ function clearDashboard() {
 /**
  * Renders a compact list using a row mapper.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-06-30
  * @param target Element that receives list rows.
  * @param items Source records.
@@ -461,7 +461,7 @@ function renderRows(target, items, mapper) {
 /**
  * Posts a JSON request with same-origin session credentials.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-07-01
  * @param url API URL.
  * @param payload JSON payload.
@@ -477,9 +477,9 @@ async function postJSON(url, payload) {
 /**
  * Fetches JSON and unwraps HTTP errors into exceptions.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-06-30
- * modified by __AUTHOR__ on 2026-07-01
+ * modified by monsterfei on 2026-07-01
  * @param url API URL.
  * @param options Fetch options.
  * @returns Parsed JSON body.
@@ -503,7 +503,7 @@ async function fetchJSON(url, options = {}) {
 /**
  * Reads a snake_case or Go-style field from API JSON.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-06-30
  * @param item Source object.
  * @param snake Snake-case field name.
@@ -517,7 +517,7 @@ function field(item, snake, goName) {
 /**
  * Formats a timestamp for compact display.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-06-30
  * @param value Timestamp value.
  * @returns Localized timestamp or n/a.
@@ -536,7 +536,7 @@ function formatTime(value) {
 /**
  * Updates the dashboard status line.
  *
- * Author: __AUTHOR__
+ * Author: monsterfei
  * Date: 2026-06-30
  * @param message Status text.
  * @param isError Whether the status is an error.

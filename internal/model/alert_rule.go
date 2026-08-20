@@ -18,7 +18,7 @@ type AlertRule struct {
 
 // UserRuleTarget combines one user-scoped rule with its owning account.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type UserRuleTarget struct {
 	User User

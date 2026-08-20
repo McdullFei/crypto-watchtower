@@ -13,9 +13,9 @@ import (
 
 // UserRepo persists account and notification user records.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
-// modified by __AUTHOR__ on 2026-07-01
+// modified by monsterfei on 2026-07-01
 type UserRepo struct {
 	DB *pgxpool.Pool
 }
@@ -33,7 +33,7 @@ func (r UserRepo) UpsertTelegramChat(ctx context.Context, chatID string) error {
 
 // BindTelegramChat stores one Telegram chat id on an existing user account.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param userID User id to bind.
@@ -51,7 +51,7 @@ func (r UserRepo) BindTelegramChat(ctx context.Context, userID int64, chatID str
 
 // UnbindTelegramChat clears one user's Telegram chat id without changing delivery preference.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param userID User id to unbind.
@@ -68,12 +68,12 @@ func (r UserRepo) UnbindTelegramChat(ctx context.Context, userID int64) error {
 
 // FindByID returns one user by primary key without loading unrelated rows.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param ctx Request context.
 // @param userID User id to look up.
 // @returns User model, whether it was found, and query error.
-// modified by __AUTHOR__ on 2026-07-01
+// modified by monsterfei on 2026-07-01
 func (r UserRepo) FindByID(ctx context.Context, userID int64) (model.User, bool, error) {
 	var user model.User
 	err := r.DB.QueryRow(ctx, `
@@ -113,12 +113,12 @@ func (r UserRepo) FindByID(ctx context.Context, userID int64) (model.User, bool,
 
 // CreateWithPassword inserts one account user with a precomputed password hash.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param user Account user to create.
 // @returns Created user with database defaults applied.
-// modified by __AUTHOR__ on 2026-07-01
+// modified by monsterfei on 2026-07-01
 func (r UserRepo) CreateWithPassword(ctx context.Context, user model.User) (model.User, error) {
 	now := time.Now().UTC()
 	if user.CreatedAt.IsZero() {
@@ -182,12 +182,12 @@ func (r UserRepo) CreateWithPassword(ctx context.Context, user model.User) (mode
 
 // FindByEmail returns one user by case-insensitive email.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param email Email address to look up.
 // @returns User model, whether it was found, and query error.
-// modified by __AUTHOR__ on 2026-07-01
+// modified by monsterfei on 2026-07-01
 func (r UserRepo) FindByEmail(ctx context.Context, email string) (model.User, bool, error) {
 	var user model.User
 	err := r.DB.QueryRow(ctx, `
@@ -229,7 +229,7 @@ func (r UserRepo) FindByEmail(ctx context.Context, email string) (model.User, bo
 
 // UpdateTelegramDeliveryEnabled toggles Telegram delivery for one user account.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param userID User id to update.
@@ -247,7 +247,7 @@ func (r UserRepo) UpdateTelegramDeliveryEnabled(ctx context.Context, userID int6
 
 // UpdateTelegramNotificationPreferences updates quiet-hours and digest preferences for one user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param userID User id to update.
@@ -278,7 +278,7 @@ func (r UserRepo) UpdateTelegramNotificationPreferences(ctx context.Context, use
 
 // telegramDeliveryEnabledForInsert keeps zero-value account creation defaulting to enabled.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @returns Telegram delivery preference for user insertion.
 func telegramDeliveryEnabledForInsert() bool {
@@ -287,7 +287,7 @@ func telegramDeliveryEnabledForInsert() bool {
 
 // UpdatePassword replaces one user's password hash.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param userID User id to update.

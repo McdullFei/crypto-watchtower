@@ -12,7 +12,7 @@ import (
 
 // TestValidateStrongPasswordRejectsWeakPasswords verifies weak account passwords are rejected.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func TestValidateStrongPasswordRejectsWeakPasswords(t *testing.T) {
 	weakPasswords := []string{
@@ -31,7 +31,7 @@ func TestValidateStrongPasswordRejectsWeakPasswords(t *testing.T) {
 
 // TestValidateStrongPasswordAcceptsComplexPassword verifies complex account passwords pass validation.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func TestValidateStrongPasswordAcceptsComplexPassword(t *testing.T) {
 	if err := ValidateStrongPassword("Strong1!"); err != nil {
@@ -41,7 +41,7 @@ func TestValidateStrongPasswordAcceptsComplexPassword(t *testing.T) {
 
 // memoryUsers stores account records for auth service tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 type memoryUsers struct {
 	nextID  int64
@@ -51,7 +51,7 @@ type memoryUsers struct {
 
 // memorySessions stores session records for auth service tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 type memorySessions struct {
 	byHash map[string]model.UserSession
@@ -59,7 +59,7 @@ type memorySessions struct {
 
 // memoryResetTokens stores password reset records for auth service tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 type memoryResetTokens struct {
 	byHash map[string]model.PasswordResetToken
@@ -67,7 +67,7 @@ type memoryResetTokens struct {
 
 // newMemoryUsers creates an empty in-memory user repository for auth tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func newMemoryUsers() *memoryUsers {
 	return &memoryUsers{
@@ -79,7 +79,7 @@ func newMemoryUsers() *memoryUsers {
 
 // newMemorySessions creates an empty in-memory session repository for auth tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func newMemorySessions() *memorySessions {
 	return &memorySessions{byHash: map[string]model.UserSession{}}
@@ -87,7 +87,7 @@ func newMemorySessions() *memorySessions {
 
 // newMemoryResetTokens creates an empty in-memory password reset repository for auth tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func newMemoryResetTokens() *memoryResetTokens {
 	return &memoryResetTokens{byHash: map[string]model.PasswordResetToken{}}
@@ -95,7 +95,7 @@ func newMemoryResetTokens() *memoryResetTokens {
 
 // CreateWithPassword stores one user with a password hash for auth tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func (m *memoryUsers) CreateWithPassword(_ context.Context, user model.User) (model.User, error) {
 	emailKey := strings.ToLower(user.Email)
@@ -111,7 +111,7 @@ func (m *memoryUsers) CreateWithPassword(_ context.Context, user model.User) (mo
 
 // FindByEmail returns one user by normalized email for auth tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func (m *memoryUsers) FindByEmail(_ context.Context, email string) (model.User, bool, error) {
 	id, ok := m.byEmail[strings.ToLower(strings.TrimSpace(email))]
@@ -123,7 +123,7 @@ func (m *memoryUsers) FindByEmail(_ context.Context, email string) (model.User, 
 
 // FindByID returns one user by id for auth tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func (m *memoryUsers) FindByID(_ context.Context, userID int64) (model.User, bool, error) {
 	user, ok := m.byID[userID]
@@ -132,7 +132,7 @@ func (m *memoryUsers) FindByID(_ context.Context, userID int64) (model.User, boo
 
 // UpdatePassword updates one user's password hash for auth tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func (m *memoryUsers) UpdatePassword(_ context.Context, userID int64, passwordHash string) error {
 	user, ok := m.byID[userID]
@@ -146,7 +146,7 @@ func (m *memoryUsers) UpdatePassword(_ context.Context, userID int64, passwordHa
 
 // Create stores one session for auth tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func (m *memorySessions) Create(_ context.Context, session model.UserSession) error {
 	m.byHash[session.TokenHash] = session
@@ -155,7 +155,7 @@ func (m *memorySessions) Create(_ context.Context, session model.UserSession) er
 
 // FindActiveByHash returns one active session for auth tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func (m *memorySessions) FindActiveByHash(_ context.Context, tokenHash string, now time.Time) (model.UserSession, bool, error) {
 	session, ok := m.byHash[tokenHash]
@@ -167,7 +167,7 @@ func (m *memorySessions) FindActiveByHash(_ context.Context, tokenHash string, n
 
 // RevokeByHash revokes one session for auth tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func (m *memorySessions) RevokeByHash(_ context.Context, tokenHash string, now time.Time) error {
 	session, ok := m.byHash[tokenHash]
@@ -181,7 +181,7 @@ func (m *memorySessions) RevokeByHash(_ context.Context, tokenHash string, now t
 
 // Create stores one password reset token for auth tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func (m *memoryResetTokens) Create(_ context.Context, token model.PasswordResetToken) error {
 	m.byHash[token.TokenHash] = token
@@ -190,7 +190,7 @@ func (m *memoryResetTokens) Create(_ context.Context, token model.PasswordResetT
 
 // FindActiveByHash returns one active password reset token for auth tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func (m *memoryResetTokens) FindActiveByHash(_ context.Context, tokenHash string, now time.Time) (model.PasswordResetToken, bool, error) {
 	token, ok := m.byHash[tokenHash]
@@ -202,7 +202,7 @@ func (m *memoryResetTokens) FindActiveByHash(_ context.Context, tokenHash string
 
 // MarkUsed consumes one password reset token for auth tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func (m *memoryResetTokens) MarkUsed(_ context.Context, tokenHash string, now time.Time) error {
 	token, ok := m.byHash[tokenHash]
@@ -216,7 +216,7 @@ func (m *memoryResetTokens) MarkUsed(_ context.Context, tokenHash string, now ti
 
 // TestServiceRegisterCreatesUserAndSession verifies registration stores a hashed password and session hash.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func TestServiceRegisterCreatesUserAndSession(t *testing.T) {
 	users := newMemoryUsers()
@@ -257,7 +257,7 @@ func TestServiceRegisterCreatesUserAndSession(t *testing.T) {
 
 // TestServiceLoginRejectsWrongPassword verifies login rejects invalid credentials.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func TestServiceLoginRejectsWrongPassword(t *testing.T) {
 	service := NewService(newMemoryUsers(), newMemorySessions(), newMemoryResetTokens(), Config{SessionTTL: time.Hour, PasswordResetTTL: time.Hour})
@@ -271,7 +271,7 @@ func TestServiceLoginRejectsWrongPassword(t *testing.T) {
 
 // TestServiceLoginCreatesSessionForCorrectPassword verifies login returns a usable session token.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func TestServiceLoginCreatesSessionForCorrectPassword(t *testing.T) {
 	users := newMemoryUsers()
@@ -294,9 +294,32 @@ func TestServiceLoginCreatesSessionForCorrectPassword(t *testing.T) {
 	}
 }
 
+// TestServiceCurrentUserReturnsDisabledAccount verifies session resolution preserves account status for authorization.
+//
+// Author: monsterfei
+// Date: 2026-08-20
+func TestServiceCurrentUserReturnsDisabledAccount(t *testing.T) {
+	users := newMemoryUsers()
+	sessions := newMemorySessions()
+	service := NewService(users, sessions, newMemoryResetTokens(), Config{SessionTTL: time.Hour, PasswordResetTTL: time.Hour})
+	session, err := service.Register(context.Background(), RegisterRequest{Email: "disabled@example.com", Password: "Strong1!"})
+	if err != nil {
+		t.Fatalf("register: %v", err)
+	}
+	disabled := users.byID[session.User.ID]
+	disabled.Status = model.UserStatusDisabled
+	users.byID[session.User.ID] = disabled
+
+	current, ok, err := service.CurrentUser(context.Background(), session.Token)
+
+	if err != nil || !ok || current.ID != session.User.ID || current.Status != model.UserStatusDisabled {
+		t.Fatalf("expected valid session with disabled account status, user=%+v ok=%v err=%v", current, ok, err)
+	}
+}
+
 // TestServiceLogoutRevokesSession verifies logout invalidates the current session token.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func TestServiceLogoutRevokesSession(t *testing.T) {
 	sessions := newMemorySessions()
@@ -315,7 +338,7 @@ func TestServiceLogoutRevokesSession(t *testing.T) {
 
 // TestServicePasswordResetUsesOneTimeToken verifies reset tokens are expiring one-time credentials.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func TestServicePasswordResetUsesOneTimeToken(t *testing.T) {
 	service := NewService(newMemoryUsers(), newMemorySessions(), newMemoryResetTokens(), Config{
@@ -346,7 +369,7 @@ func TestServicePasswordResetUsesOneTimeToken(t *testing.T) {
 
 // TestServiceChangePasswordRequiresCurrentPassword verifies password changes require the current password.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func TestServiceChangePasswordRequiresCurrentPassword(t *testing.T) {
 	service := NewService(newMemoryUsers(), newMemorySessions(), newMemoryResetTokens(), Config{SessionTTL: time.Hour, PasswordResetTTL: time.Hour})
@@ -370,7 +393,7 @@ func TestServiceChangePasswordRequiresCurrentPassword(t *testing.T) {
 
 // TestPlanLimitsReturnBoundedEntitlements verifies subscription plans map to bounded limits.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func TestPlanLimitsReturnBoundedEntitlements(t *testing.T) {
 	cases := []struct {

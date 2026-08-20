@@ -219,7 +219,7 @@ func TestPostgresRedisRepositoriesExerciseRealDependencies(t *testing.T) {
 
 // TestAuthRepositoriesPersistSessionsAndResetTokens verifies auth persistence against PostgreSQL.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func TestAuthRepositoriesPersistSessionsAndResetTokens(t *testing.T) {
 	ctx := context.Background()
@@ -287,7 +287,7 @@ func TestAuthRepositoriesPersistSessionsAndResetTokens(t *testing.T) {
 
 // TestTelegramBindingRepositoriesPersistAndConsumeTokens verifies binding tokens and account chat ids persist.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestTelegramBindingRepositoriesPersistAndConsumeTokens(t *testing.T) {
 	ctx := context.Background()
@@ -338,7 +338,7 @@ func TestTelegramBindingRepositoriesPersistAndConsumeTokens(t *testing.T) {
 
 // TestUserDeliveryPreferenceRepositoryPersistsTelegramSwitch verifies Telegram delivery preference persistence.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestUserDeliveryPreferenceRepositoryPersistsTelegramSwitch(t *testing.T) {
 	ctx := context.Background()
@@ -410,7 +410,7 @@ func TestUserDeliveryPreferenceRepositoryPersistsTelegramSwitch(t *testing.T) {
 
 // TestUserNotificationPreferencesRepositoryPersistsQuietHoursAndDigest verifies quiet-hours and digest preferences persist.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestUserNotificationPreferencesRepositoryPersistsQuietHoursAndDigest(t *testing.T) {
 	ctx := context.Background()
@@ -458,7 +458,7 @@ func TestUserNotificationPreferencesRepositoryPersistsQuietHoursAndDigest(t *tes
 
 // TestUserTelegramUnbindClearsChatAndPreservesDeliveryPreference verifies unbind persistence.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestUserTelegramUnbindClearsChatAndPreservesDeliveryPreference(t *testing.T) {
 	ctx := context.Background()
@@ -523,7 +523,7 @@ func repoRoot(t *testing.T) string {
 
 // setupIntegrationRepositories prepares migrated PostgreSQL repositories for integration tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func setupIntegrationRepositories(t *testing.T) *storage.Repositories {
 	t.Helper()

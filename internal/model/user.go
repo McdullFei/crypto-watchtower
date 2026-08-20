@@ -13,10 +13,10 @@ const (
 
 // User stores account, notification, and subscription metadata.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
-// modified by __AUTHOR__ on 2026-06-30
-// modified by __AUTHOR__ on 2026-07-01
+// modified by monsterfei on 2026-06-30
+// modified by monsterfei on 2026-07-01
 type User struct {
 	ID                         int64
 	Email                      string
@@ -38,7 +38,7 @@ type User struct {
 
 // UserNotificationPreferences stores user-controlled Telegram noise preferences.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type UserNotificationPreferences struct {
 	TelegramQuietHoursEnabled  bool   `json:"telegram_quiet_hours_enabled"`
@@ -51,7 +51,7 @@ type UserNotificationPreferences struct {
 
 // UserSession stores one persisted login session.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 type UserSession struct {
 	ID        int64
@@ -65,7 +65,7 @@ type UserSession struct {
 
 // PasswordResetToken stores one expiring password reset token.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 type PasswordResetToken struct {
 	ID        int64
@@ -78,7 +78,7 @@ type PasswordResetToken struct {
 
 // TelegramBindingToken stores one expiring Telegram account binding token.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type TelegramBindingToken struct {
 	ID        int64

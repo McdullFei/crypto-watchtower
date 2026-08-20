@@ -10,7 +10,7 @@ import (
 
 // ProfileRepository defines bounded user profile lookups for the dashboard.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 type ProfileRepository interface {
 	FindByID(context.Context, int64) (model.User, bool, error)
@@ -18,7 +18,7 @@ type ProfileRepository interface {
 
 // DeliveryPreferenceRepository defines Telegram delivery preference writes.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type DeliveryPreferenceRepository interface {
 	UpdateTelegramDeliveryEnabled(context.Context, int64, bool) error
@@ -26,7 +26,7 @@ type DeliveryPreferenceRepository interface {
 
 // NotificationPreferenceRepository defines Telegram quiet-hours and digest preference writes.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type NotificationPreferenceRepository interface {
 	UpdateTelegramNotificationPreferences(context.Context, int64, model.UserNotificationPreferences) error
@@ -34,7 +34,7 @@ type NotificationPreferenceRepository interface {
 
 // TelegramUnbindRepository defines current-user Telegram unbind writes.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type TelegramUnbindRepository interface {
 	UnbindTelegramChat(context.Context, int64) error
@@ -42,7 +42,7 @@ type TelegramUnbindRepository interface {
 
 // AlertRepository defines bounded user alert history reads for the dashboard.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 type AlertRepository interface {
 	ListForUser(context.Context, int64, int) ([]model.Alert, error)
@@ -50,7 +50,7 @@ type AlertRepository interface {
 
 // NotificationRepository defines bounded user notification-log reads for profile state.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type NotificationRepository interface {
 	LatestForUser(context.Context, int64, int) ([]model.NotificationLog, error)
@@ -58,7 +58,7 @@ type NotificationRepository interface {
 
 // RuleCountRepository defines bounded user rule-count reads for subscription limits.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type RuleCountRepository interface {
 	CountUserRules(context.Context, int64) (int64, error)
@@ -66,9 +66,9 @@ type RuleCountRepository interface {
 
 // Service coordinates user-facing dashboard reads.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
-// modified by __AUTHOR__ on 2026-07-01
+// modified by monsterfei on 2026-07-01
 type Service struct {
 	profiles                 ProfileRepository
 	preferences              DeliveryPreferenceRepository
@@ -81,14 +81,14 @@ type Service struct {
 
 // NewService creates the user dashboard service from narrow repositories.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param profiles Repository for bounded user profile reads.
 // @param alerts Repository for bounded user alert history reads.
 // @param rules Repository for bounded user rule-count reads.
 // @param notifications Optional repository for bounded recent notification state.
 // @returns User dashboard service.
-// modified by __AUTHOR__ on 2026-07-01
+// modified by monsterfei on 2026-07-01
 func NewService(profiles ProfileRepository, alerts AlertRepository, rules RuleCountRepository, notifications ...NotificationRepository) Service {
 	preferences, _ := profiles.(DeliveryPreferenceRepository)
 	notificationPreferences, _ := profiles.(NotificationPreferenceRepository)
@@ -110,7 +110,7 @@ func NewService(profiles ProfileRepository, alerts AlertRepository, rules RuleCo
 
 // Profile returns safe user profile metadata for the dashboard.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param ctx Request context.
 // @param userID User id to look up.
@@ -157,7 +157,7 @@ func (s Service) Profile(ctx context.Context, userID int64) (api.UserProfile, er
 
 // UpdateTelegramDeliveryEnabled persists a Telegram delivery preference and returns the refreshed profile.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param userID User id to update.
@@ -179,7 +179,7 @@ func (s Service) UpdateTelegramDeliveryEnabled(ctx context.Context, userID int64
 
 // UpdateTelegramNotificationPreferences persists quiet-hours and digest preferences and returns the refreshed profile.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param userID User id to update.
@@ -201,7 +201,7 @@ func (s Service) UpdateTelegramNotificationPreferences(ctx context.Context, user
 
 // UnbindTelegram clears Telegram binding for one user and returns the refreshed profile.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param userID User id to unbind.
@@ -217,7 +217,7 @@ func (s Service) UnbindTelegram(ctx context.Context, userID int64) (api.UserProf
 
 // ListAlerts returns alert history that belongs to one user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param ctx Request context.
 // @param userID User id that owns notification history.
@@ -232,7 +232,7 @@ func (s Service) ListAlerts(ctx context.Context, userID int64, limit int) ([]mod
 
 // ListNotificationLogs returns safe bounded notification logs for one user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param userID User id that owns notification history.
@@ -262,7 +262,7 @@ func (s Service) ListNotificationLogs(ctx context.Context, userID int64, limit i
 
 // CanCreateRule checks whether a user can add another personal alert rule.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param user Current authenticated user.
@@ -287,7 +287,7 @@ func (s Service) CanCreateRule(ctx context.Context, user model.User) error {
 
 // AlertHistoryLimit caps requested alert history to the user's subscription entitlement.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param user Current authenticated user.
 // @param requested Requested alert history limit.
@@ -302,7 +302,7 @@ func (s Service) AlertHistoryLimit(user model.User, requested int) int {
 
 // maskBinding keeps only the last four characters of a binding identifier.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param value Binding identifier to mask.
 // @returns Masked binding identifier.
@@ -318,7 +318,7 @@ func maskBinding(value string) string {
 
 // notificationPreferencesFromUser returns user preference fields with safe defaults.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param user User model containing persisted preference fields.
 // @returns Telegram quiet-hours and digest preferences for API responses.

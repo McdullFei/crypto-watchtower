@@ -38,7 +38,7 @@ func TestServiceStoresFailedSummaryWhenGenerationFails(t *testing.T) {
 
 // TestServiceSendsGeneratedSummaryToNotificationSenders verifies generated summaries are observable through notification logs.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-03
 func TestServiceSendsGeneratedSummaryToNotificationSenders(t *testing.T) {
 	now := time.Date(2026, 7, 3, 10, 0, 0, 0, time.UTC)
@@ -75,7 +75,7 @@ func TestServiceSendsGeneratedSummaryToNotificationSenders(t *testing.T) {
 
 // staticGenerator returns a fixed successful summary for service tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-03
 type staticGenerator struct {
 	content string
@@ -83,7 +83,7 @@ type staticGenerator struct {
 
 // Generate returns configured summary content for service tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-03
 // @param ctx Request context.
 // @param snapshot Bounded market snapshot.
@@ -117,7 +117,7 @@ func (f *fakeSummaryStore) Insert(_ context.Context, summary model.MarketSummary
 
 // fakeSummaryNotificationStore records summary notification logs in memory.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-03
 type fakeSummaryNotificationStore struct {
 	logs []model.NotificationLog
@@ -125,7 +125,7 @@ type fakeSummaryNotificationStore struct {
 
 // InsertNotificationLog records summary notification logs in memory for service tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-03
 // @param ctx Request context.
 // @param log Notification delivery log.
@@ -137,7 +137,7 @@ func (f *fakeSummaryNotificationStore) InsertNotificationLog(_ context.Context, 
 
 // fakeSummarySender records summary alerts sent by the service.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-03
 type fakeSummarySender struct {
 	name   string
@@ -147,7 +147,7 @@ type fakeSummarySender struct {
 
 // Name returns the fake sender channel name.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-03
 // @returns Channel name.
 func (f fakeSummarySender) Name() string {
@@ -156,7 +156,7 @@ func (f fakeSummarySender) Name() string {
 
 // Target returns the fake sender target.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-03
 // @returns Target identifier.
 func (f fakeSummarySender) Target() string {
@@ -165,7 +165,7 @@ func (f fakeSummarySender) Target() string {
 
 // Send records the alert sent by the summary service.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-03
 // @param ctx Request context.
 // @param alert Summary alert to send.

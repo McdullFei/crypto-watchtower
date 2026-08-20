@@ -17,7 +17,7 @@ const defaultTelegramBindingTTL = 10 * time.Minute
 
 // TelegramBindingConfig controls Telegram binding token behavior.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type TelegramBindingConfig struct {
 	TokenTTL time.Duration
@@ -25,7 +25,7 @@ type TelegramBindingConfig struct {
 
 // TelegramBindingTokenRepository defines persisted binding token operations.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type TelegramBindingTokenRepository interface {
 	Create(context.Context, model.TelegramBindingToken) error
@@ -35,7 +35,7 @@ type TelegramBindingTokenRepository interface {
 
 // TelegramAccountBinder defines account chat-id binding operations.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type TelegramAccountBinder interface {
 	BindTelegramChat(context.Context, int64, string) error
@@ -43,7 +43,7 @@ type TelegramAccountBinder interface {
 
 // TelegramBindingService coordinates account Telegram binding tokens.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type TelegramBindingService struct {
 	tokens   TelegramBindingTokenRepository
@@ -53,7 +53,7 @@ type TelegramBindingService struct {
 
 // NewTelegramBindingService creates a Telegram binding service.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param tokens Binding token repository.
 // @param accounts Account chat-id binder.
@@ -68,7 +68,7 @@ func NewTelegramBindingService(tokens TelegramBindingTokenRepository, accounts T
 
 // CreateBindingToken creates one raw Telegram binding token and stores only its hash.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param userID User id that owns the token.
@@ -99,7 +99,7 @@ func (s TelegramBindingService) CreateBindingToken(ctx context.Context, userID i
 
 // BindTelegramChat consumes one binding token and stores the Telegram chat id.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param rawToken Raw binding token from Telegram command.
@@ -131,7 +131,7 @@ func (s TelegramBindingService) BindTelegramChat(ctx context.Context, rawToken s
 
 // randomBindingToken creates a URL-safe binding token with 32 bytes of entropy.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @returns Raw binding token.
 func randomBindingToken() (string, error) {
@@ -144,7 +144,7 @@ func randomBindingToken() (string, error) {
 
 // hashBindingToken hashes a raw binding token for storage lookup.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param rawToken Raw binding token.
 // @returns SHA-256 hex hash.

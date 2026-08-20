@@ -22,7 +22,7 @@ type stubAlertRepository struct {
 
 // stubNotificationRepository returns recent notification logs for service tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type stubNotificationRepository struct {
 	logs       []model.NotificationLog
@@ -32,7 +32,7 @@ type stubNotificationRepository struct {
 
 // stubRuleCountRepository returns a configured rule count for service tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type stubRuleCountRepository struct {
 	count int64
@@ -40,7 +40,7 @@ type stubRuleCountRepository struct {
 
 // FindByID returns one user for service tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func (s stubProfileRepository) FindByID(context.Context, int64) (model.User, bool, error) {
 	return s.user, s.ok, nil
@@ -48,7 +48,7 @@ func (s stubProfileRepository) FindByID(context.Context, int64) (model.User, boo
 
 // ListForUser returns alert history for service tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func (s *stubAlertRepository) ListForUser(_ context.Context, userID int64, limit int) ([]model.Alert, error) {
 	s.lastUserID = userID
@@ -58,7 +58,7 @@ func (s *stubAlertRepository) ListForUser(_ context.Context, userID int64, limit
 
 // LatestForUser returns recent notification logs for service tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (s *stubNotificationRepository) LatestForUser(_ context.Context, userID int64, limit int) ([]model.NotificationLog, error) {
 	s.lastUserID = userID
@@ -68,7 +68,7 @@ func (s *stubNotificationRepository) LatestForUser(_ context.Context, userID int
 
 // CountUserRules returns the configured user rule count for service tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (s stubRuleCountRepository) CountUserRules(context.Context, int64) (int64, error) {
 	return s.count, nil
@@ -76,7 +76,7 @@ func (s stubRuleCountRepository) CountUserRules(context.Context, int64) (int64, 
 
 // TestServiceProfileMasksTelegramBinding verifies Telegram metadata is not exposed raw.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func TestServiceProfileMasksTelegramBinding(t *testing.T) {
 	service := NewService(stubProfileRepository{
@@ -101,7 +101,7 @@ func TestServiceProfileMasksTelegramBinding(t *testing.T) {
 
 // TestServiceProfileIncludesRecentDeliveryStatus verifies profile reads include latest user notification state.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestServiceProfileIncludesRecentDeliveryStatus(t *testing.T) {
 	service := NewService(stubProfileRepository{
@@ -124,7 +124,7 @@ func TestServiceProfileIncludesRecentDeliveryStatus(t *testing.T) {
 
 // TestServiceListNotificationLogsMasksTargets verifies user notification logs are scoped and masked.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestServiceListNotificationLogsMasksTargets(t *testing.T) {
 	userID := int64(42)
@@ -161,7 +161,7 @@ func TestServiceListNotificationLogsMasksTargets(t *testing.T) {
 
 // TestServiceListAlertsUsesUserScope verifies alert history is read through user ownership.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func TestServiceListAlertsUsesUserScope(t *testing.T) {
 	alerts := &stubAlertRepository{
@@ -183,7 +183,7 @@ func TestServiceListAlertsUsesUserScope(t *testing.T) {
 
 // TestServiceCanCreateRuleEnforcesPlanLimit verifies subscription rule-count limits are enforced.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestServiceCanCreateRuleEnforcesPlanLimit(t *testing.T) {
 	service := NewService(nil, nil, stubRuleCountRepository{count: 5})
@@ -197,7 +197,7 @@ func TestServiceCanCreateRuleEnforcesPlanLimit(t *testing.T) {
 
 // TestServiceAlertHistoryLimitCapsRequestedLimit verifies alert history requests are plan bounded.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestServiceAlertHistoryLimitCapsRequestedLimit(t *testing.T) {
 	service := NewService(nil, nil, nil)

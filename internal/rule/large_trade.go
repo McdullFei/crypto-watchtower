@@ -13,7 +13,7 @@ type LargeTradeRule struct {
 
 // Evaluate returns a large-trade alert when one aggregate trade exceeds the configured notional threshold.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-02
 // @param event Market event to evaluate.
 // @returns Alert and whether the rule matched.

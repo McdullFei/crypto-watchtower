@@ -27,7 +27,7 @@ type stubUserBinder struct {
 
 // stubTelegramTokenBinder records token-based Telegram bindings for poller tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type stubTelegramTokenBinder struct {
 	token  string
@@ -36,7 +36,7 @@ type stubTelegramTokenBinder struct {
 
 // BindTelegramChat records one token binding request for poller tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (s *stubTelegramTokenBinder) BindTelegramChat(_ context.Context, token string, chatID string) (int64, bool, error) {
 	s.token = token
@@ -134,7 +134,7 @@ func TestTelegramPollerHandlesStartAndRulesCommands(t *testing.T) {
 
 // TestTelegramPollerHandlesStartBindingToken verifies /start token binds a chat to an account.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestTelegramPollerHandlesStartBindingToken(t *testing.T) {
 	var sentMessage string
@@ -236,7 +236,7 @@ func TestTelegramPollerHandlesTestCommand(t *testing.T) {
 
 // TestTelegramNotifierLocalSandboxSucceeds verifies SIT can exercise sent notification logs without real Telegram credentials.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-02
 func TestTelegramNotifierLocalSandboxSucceeds(t *testing.T) {
 	notifier := NewTelegramNotifier("local-sandbox", "sit-chat", nil)

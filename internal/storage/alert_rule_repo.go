@@ -16,9 +16,9 @@ type AlertRuleRepo struct {
 
 // ListEnabled returns enabled system rules for global rule responses.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
-// modified by __AUTHOR__ on 2026-06-30
+// modified by monsterfei on 2026-06-30
 func (r AlertRuleRepo) ListEnabled(ctx context.Context) ([]model.AlertRule, error) {
 	return r.queryRules(ctx, `
 		SELECT id, user_id, scope, exchange, symbol, rule_type, threshold, window_sec, enabled, created_at, updated_at
@@ -35,9 +35,9 @@ func (r AlertRuleRepo) ListSystemRules(ctx context.Context) ([]model.AlertRule, 
 
 // List returns alert rules matching the provided bounded filter.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
-// modified by __AUTHOR__ on 2026-06-30
+// modified by monsterfei on 2026-06-30
 func (r AlertRuleRepo) List(ctx context.Context, filter ListFilter) ([]model.AlertRule, error) {
 	query := `
 		SELECT id, user_id, scope, exchange, symbol, rule_type, threshold, window_sec, enabled, created_at, updated_at
@@ -74,7 +74,7 @@ func (r AlertRuleRepo) List(ctx context.Context, filter ListFilter) ([]model.Ale
 
 // ListUserRules returns rules owned by one user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param ctx Request context.
 // @param userID User id to filter.
@@ -85,7 +85,7 @@ func (r AlertRuleRepo) ListUserRules(ctx context.Context, userID int64) ([]model
 
 // CountUserRules returns how many user-scoped rules belong to one user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param userID User id to count.
@@ -103,14 +103,14 @@ func (r AlertRuleRepo) CountUserRules(ctx context.Context, userID int64) (int64,
 
 // ListActiveUserRulesForEvent returns bounded user rules and active bound owners for one event.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
-// modified by __AUTHOR__ on 2026-07-01
+// modified by monsterfei on 2026-07-01
 // @param ctx Request context.
 // @param event Market event used for exchange and symbol lookup.
 // @param limit Maximum number of user rules to scan.
 // @returns User-rule targets for fanout.
-// modified by __AUTHOR__ on 2026-07-01
+// modified by monsterfei on 2026-07-01
 func (r AlertRuleRepo) ListActiveUserRulesForEvent(ctx context.Context, event model.MarketEvent, limit int) ([]model.UserRuleTarget, error) {
 	rows, err := r.DB.Query(ctx, `
 		SELECT r.id, r.user_id, r.scope, r.exchange, r.symbol, r.rule_type,
@@ -215,7 +215,7 @@ func (r AlertRuleRepo) UpsertSystemRule(ctx context.Context, rule model.AlertRul
 
 // UpsertUserRule inserts or updates one user-scoped alert rule.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param ctx Request context.
 // @param rule User-scoped alert rule.

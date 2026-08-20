@@ -24,7 +24,7 @@ type SummaryStore interface {
 
 // NotificationLogStore persists market summary notification delivery records.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-03
 type NotificationLogStore interface {
 	InsertNotificationLog(context.Context, model.NotificationLog) error
@@ -32,7 +32,7 @@ type NotificationLogStore interface {
 
 // NamedSender sends generated summaries and exposes notification log metadata.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-03
 type NamedSender interface {
 	Name() string
@@ -44,7 +44,7 @@ type NamedSender interface {
 //
 // Author: monsterfei
 // Date: 2026-06-30
-// modified by __AUTHOR__ on 2026-07-03
+// modified by monsterfei on 2026-07-03
 type Service struct {
 	Aggregator    Aggregator
 	Generator     Generator
@@ -60,7 +60,7 @@ type Service struct {
 //
 // Author: monsterfei
 // Date: 2026-06-30
-// modified by __AUTHOR__ on 2026-07-03
+// modified by monsterfei on 2026-07-03
 // @param ctx Request context.
 // @returns Error for aggregation or storage failures.
 func (s Service) RunOnce(ctx context.Context) error {
@@ -105,7 +105,7 @@ func (s Service) RunOnce(ctx context.Context) error {
 
 // sendSummary delivers one generated summary through optional notification senders.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-03
 // @param ctx Request context.
 // @param summary Persisted summary to deliver.
@@ -139,7 +139,7 @@ func (s Service) sendSummary(ctx context.Context, summary model.MarketSummary) e
 
 // summaryAlert adapts generated summary content to the existing notifier alert contract.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-03
 // @param summary Persisted market summary.
 // @returns Alert-shaped summary payload for notification senders.

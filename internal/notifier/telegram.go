@@ -36,9 +36,9 @@ func (n TelegramNotifier) Send(ctx context.Context, alert model.Alert) error {
 
 // SendTo sends one alert to an explicit Telegram chat id.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
-// modified by __AUTHOR__ on 2026-07-02
+// modified by monsterfei on 2026-07-02
 // @param ctx Request context.
 // @param chatID Telegram chat id.
 // @param alert Alert to format and send.

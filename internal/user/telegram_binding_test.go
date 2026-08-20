@@ -11,7 +11,7 @@ import (
 
 // memoryTelegramBindingTokens stores binding tokens for service tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type memoryTelegramBindingTokens struct {
 	tokens map[string]model.TelegramBindingToken
@@ -19,7 +19,7 @@ type memoryTelegramBindingTokens struct {
 
 // memoryTelegramAccountBinder records account chat bindings for service tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type memoryTelegramAccountBinder struct {
 	bindings map[int64]string
@@ -27,7 +27,7 @@ type memoryTelegramAccountBinder struct {
 
 // newMemoryTelegramBindingTokens creates an empty binding-token repository for tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func newMemoryTelegramBindingTokens() *memoryTelegramBindingTokens {
 	return &memoryTelegramBindingTokens{tokens: map[string]model.TelegramBindingToken{}}
@@ -35,7 +35,7 @@ func newMemoryTelegramBindingTokens() *memoryTelegramBindingTokens {
 
 // newMemoryTelegramAccountBinder creates an empty account binder for tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func newMemoryTelegramAccountBinder() *memoryTelegramAccountBinder {
 	return &memoryTelegramAccountBinder{bindings: map[int64]string{}}
@@ -43,7 +43,7 @@ func newMemoryTelegramAccountBinder() *memoryTelegramAccountBinder {
 
 // Create stores one Telegram binding token for service tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (m *memoryTelegramBindingTokens) Create(_ context.Context, token model.TelegramBindingToken) error {
 	if _, ok := m.tokens[token.TokenHash]; ok {
@@ -55,7 +55,7 @@ func (m *memoryTelegramBindingTokens) Create(_ context.Context, token model.Tele
 
 // FindActiveByHash returns one active Telegram binding token for service tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (m *memoryTelegramBindingTokens) FindActiveByHash(_ context.Context, tokenHash string, now time.Time) (model.TelegramBindingToken, bool, error) {
 	token, ok := m.tokens[tokenHash]
@@ -67,7 +67,7 @@ func (m *memoryTelegramBindingTokens) FindActiveByHash(_ context.Context, tokenH
 
 // MarkUsed consumes one Telegram binding token for service tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (m *memoryTelegramBindingTokens) MarkUsed(_ context.Context, tokenHash string, now time.Time) error {
 	token, ok := m.tokens[tokenHash]
@@ -81,7 +81,7 @@ func (m *memoryTelegramBindingTokens) MarkUsed(_ context.Context, tokenHash stri
 
 // BindTelegramChat records one Telegram chat id for service tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (m *memoryTelegramAccountBinder) BindTelegramChat(_ context.Context, userID int64, chatID string) error {
 	m.bindings[userID] = chatID
@@ -90,7 +90,7 @@ func (m *memoryTelegramAccountBinder) BindTelegramChat(_ context.Context, userID
 
 // TestTelegramBindingServiceCreatesHashedToken verifies raw binding tokens are not persisted.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestTelegramBindingServiceCreatesHashedToken(t *testing.T) {
 	tokens := newMemoryTelegramBindingTokens()
@@ -121,7 +121,7 @@ func TestTelegramBindingServiceCreatesHashedToken(t *testing.T) {
 
 // TestTelegramBindingServiceConsumesTokenOnce verifies binding tokens bind one chat and cannot be reused.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestTelegramBindingServiceConsumesTokenOnce(t *testing.T) {
 	tokens := newMemoryTelegramBindingTokens()

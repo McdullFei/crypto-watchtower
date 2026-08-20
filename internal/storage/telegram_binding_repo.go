@@ -13,7 +13,7 @@ import (
 
 // TelegramBindingRepo persists expiring Telegram account binding tokens.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type TelegramBindingRepo struct {
 	DB *pgxpool.Pool
@@ -21,7 +21,7 @@ type TelegramBindingRepo struct {
 
 // Create stores one Telegram binding token hash.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param token Telegram binding token to persist.
@@ -45,7 +45,7 @@ func (r TelegramBindingRepo) Create(ctx context.Context, token model.TelegramBin
 
 // FindActiveByHash returns one unexpired unused Telegram binding token by hash.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param tokenHash SHA-256 token hash.
@@ -77,7 +77,7 @@ func (r TelegramBindingRepo) FindActiveByHash(ctx context.Context, tokenHash str
 
 // MarkUsed consumes one Telegram binding token hash.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param tokenHash SHA-256 token hash.

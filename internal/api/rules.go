@@ -21,7 +21,7 @@ type RuleService interface {
 
 // ruleWriteRequest contains a system or user-scoped rule write payload.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 type ruleWriteRequest struct {
 	Exchange  string  `json:"exchange"`
@@ -35,9 +35,9 @@ type ruleWriteRequest struct {
 
 // handleGetRules returns default rules plus persisted system or user rules.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
-// modified by __AUTHOR__ on 2026-06-30
+// modified by monsterfei on 2026-06-30
 func handleGetRules(deps Dependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		data := map[string]any{
@@ -65,9 +65,9 @@ func handleGetRules(deps Dependencies) http.HandlerFunc {
 
 // handlePostRules writes one protected system or user-scoped alert rule.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
-// modified by __AUTHOR__ on 2026-06-30
+// modified by monsterfei on 2026-06-30
 func handlePostRules(deps Dependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !authorize(r, deps.APIBearerToken) {
@@ -119,16 +119,25 @@ func handlePostRules(deps Dependencies) http.HandlerFunc {
 
 // toModel converts a rule write request into a persisted alert rule.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @returns Alert rule model or validation error.
-// modified by __AUTHOR__ on 2026-06-30
+// modified by monsterfei on 2026-06-30
+// modified by monsterfei on 2026-08-20
 func (r ruleWriteRequest) toModel() (model.AlertRule, error) {
 	if r.Exchange == "" {
 		r.Exchange = "binance"
 	}
+	if r.Exchange != "binance" && r.Exchange != "okx" {
+		return model.AlertRule{}, errors.New("unsupported exchange")
+	}
 	if r.Symbol == "" || r.RuleType == "" {
 		return model.AlertRule{}, errors.New("symbol and rule_type are required")
+	}
+	switch r.RuleType {
+	case "large_trade", "large_trade_window", "liquidation", "funding_anomaly":
+	default:
+		return model.AlertRule{}, errors.New("unsupported rule_type")
 	}
 	if r.Threshold <= 0 {
 		return model.AlertRule{}, errors.New("threshold must be greater than 0")
@@ -147,6 +156,9 @@ func (r ruleWriteRequest) toModel() (model.AlertRule, error) {
 	if r.WindowSec == 0 {
 		r.WindowSec = 60
 	}
+	if r.WindowSec < 0 {
+		return model.AlertRule{}, errors.New("window_sec must be greater than 0")
+	}
 	now := time.Now().UTC()
 	return model.AlertRule{
 		UserID:    r.UserID,
@@ -164,7 +176,7 @@ func (r ruleWriteRequest) toModel() (model.AlertRule, error) {
 
 // listRulesForRequest returns system or user-scoped rules for the public rules API.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param ctx Request context.
 // @param service Rule service dependency.
@@ -183,7 +195,7 @@ func listRulesForRequest(ctx context.Context, service RuleService, r *http.Reque
 
 // upsertRuleForRequest writes a system or user-scoped rule through the rule service.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param ctx Request context.
 // @param service Rule service dependency.
@@ -198,7 +210,7 @@ func upsertRuleForRequest(ctx context.Context, service RuleService, rule model.A
 
 // userIDFromQuery parses an optional positive user id from a rules request.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param r HTTP request.
 // @returns Parsed user id, whether it was present, and parse error.

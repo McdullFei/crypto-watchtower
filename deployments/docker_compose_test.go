@@ -8,7 +8,7 @@ import (
 
 // TestDockerComposePassesBinanceEndpointOverrides verifies compose exposes Binance endpoint overrides.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-02
 func TestDockerComposePassesBinanceEndpointOverrides(t *testing.T) {
 	raw, err := os.ReadFile("docker-compose.yml")

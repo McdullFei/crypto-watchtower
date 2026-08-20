@@ -274,7 +274,7 @@ func runtimeSymbols(cfg config.Config) []string {
 // @param cfg Runtime configuration.
 // @param telegram Existing Telegram sender.
 // @returns Channel-aware senders for the alert pipeline.
-// modified by __AUTHOR__ on 2026-07-02
+// modified by monsterfei on 2026-07-02
 func buildNotificationSenders(cfg config.Config, telegram rule.Sender) []rule.NamedSender {
 	senders := make([]rule.NamedSender, 0, 2)
 	if cfg.Telegram.Enabled {
@@ -292,7 +292,7 @@ func buildNotificationSenders(cfg config.Config, telegram rule.Sender) []rule.Na
 
 // summaryNotificationSenders adapts alert pipeline senders for summary delivery.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-03
 // @param senders Alert pipeline notification senders.
 // @returns Summary-compatible notification senders.
@@ -306,7 +306,7 @@ func summaryNotificationSenders(senders []rule.NamedSender) []summary.NamedSende
 
 // safeWebhookLogTarget redacts Discord-compatible webhook secrets before persistence.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-02
 // @param rawURL Configured webhook URL used for delivery.
 // @returns Safe target identifier for notification logs.
@@ -332,7 +332,7 @@ func safeWebhookLogTarget(rawURL string) string {
 // @param repos Storage repositories.
 // @param senders Optional notification senders for generated summaries.
 // @returns Summary service wired with bounded aggregation and configured generator.
-// modified by __AUTHOR__ on 2026-07-03
+// modified by monsterfei on 2026-07-03
 func buildSummaryService(cfg config.Config, repos *storage.Repositories, senders ...summary.NamedSender) summary.Service {
 	aggregator := summary.NewAggregator(repos.Alerts, repos.MarketEvents, summary.Config{MaxItems: cfg.Summary.MaxItems})
 	var generator summary.Generator = summary.NewTemplateGenerator(cfg.Summary.Disclaimer)

@@ -27,7 +27,7 @@ type stubUserService struct {
 
 // Profile returns one user profile for user API tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func (s *stubUserService) Profile(_ context.Context, userID int64) (UserProfile, error) {
 	s.lastUserID = userID
@@ -36,7 +36,7 @@ func (s *stubUserService) Profile(_ context.Context, userID int64) (UserProfile,
 
 // ListAlerts returns one user's alert history for user API tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func (s *stubUserService) ListAlerts(_ context.Context, userID int64, limit int) ([]model.Alert, error) {
 	s.lastUserID = userID
@@ -46,7 +46,7 @@ func (s *stubUserService) ListAlerts(_ context.Context, userID int64, limit int)
 
 // ListNotificationLogs returns one user's notification history for user API tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (s *stubUserService) ListNotificationLogs(_ context.Context, userID int64, limit int) ([]UserNotificationLog, error) {
 	s.lastUserID = userID
@@ -56,7 +56,7 @@ func (s *stubUserService) ListNotificationLogs(_ context.Context, userID int64, 
 
 // CanCreateRule returns the configured rule-limit result for user API tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (s *stubUserService) CanCreateRule(context.Context, model.User) error {
 	return s.ruleErr
@@ -64,7 +64,7 @@ func (s *stubUserService) CanCreateRule(context.Context, model.User) error {
 
 // AlertHistoryLimit returns the requested limit for user API tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (s *stubUserService) AlertHistoryLimit(_ model.User, requested int) int {
 	return requested
@@ -72,7 +72,7 @@ func (s *stubUserService) AlertHistoryLimit(_ model.User, requested int) int {
 
 // UpdateTelegramDeliveryEnabled records one Telegram delivery preference update for user API tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (s *stubUserService) UpdateTelegramDeliveryEnabled(_ context.Context, userID int64, enabled bool) (UserProfile, error) {
 	s.lastUserID = userID
@@ -84,7 +84,7 @@ func (s *stubUserService) UpdateTelegramDeliveryEnabled(_ context.Context, userI
 
 // UpdateTelegramNotificationPreferences records one quiet-hours and digest preference update for user API tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param userID User id to update.
 // @param preferences Quiet-hours and digest preference payload.
@@ -98,7 +98,7 @@ func (s *stubUserService) UpdateTelegramNotificationPreferences(_ context.Contex
 
 // UnbindTelegram records one Telegram unbind request for user API tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (s *stubUserService) UnbindTelegram(_ context.Context, userID int64) (UserProfile, error) {
 	s.unboundUserID = userID
@@ -110,7 +110,7 @@ func (s *stubUserService) UnbindTelegram(_ context.Context, userID int64) (UserP
 
 // stubTelegramBindingService returns binding tokens for user API tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type stubTelegramBindingService struct {
 	rawToken   string
@@ -120,7 +120,7 @@ type stubTelegramBindingService struct {
 
 // CreateBindingToken returns a configured Telegram binding token for API tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (s *stubTelegramBindingService) CreateBindingToken(_ context.Context, userID int64) (string, time.Time, error) {
 	s.lastUserID = userID
@@ -135,7 +135,7 @@ func (s *stubTelegramBindingService) CreateBindingToken(_ context.Context, userI
 
 // TestUserProfileRequiresSession verifies user profile APIs require a valid session.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestUserProfileRequiresSession(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/user/profile", nil)
@@ -150,7 +150,7 @@ func TestUserProfileRequiresSession(t *testing.T) {
 
 // TestUserRulesListUsesSessionUser verifies user rule reads are scoped to the session user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestUserRulesListUsesSessionUser(t *testing.T) {
 	userID := int64(42)
@@ -193,7 +193,7 @@ func TestUserRulesListUsesSessionUser(t *testing.T) {
 
 // TestUserRulesListReturnsEmptyArray verifies empty user rule reads stay list-shaped for dashboard consumers.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-02
 func TestUserRulesListReturnsEmptyArray(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/user/rules", nil)
@@ -221,7 +221,7 @@ func TestUserRulesListReturnsEmptyArray(t *testing.T) {
 
 // TestUserRulesPostUsesSessionUser verifies user rule writes use the session user as owner.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestUserRulesPostUsesSessionUser(t *testing.T) {
 	ruleSvc := &stubRuleService{}
@@ -248,7 +248,7 @@ func TestUserRulesPostUsesSessionUser(t *testing.T) {
 
 // TestUserProfileUsesSessionUser verifies profile reads expose masked binding state for the session user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestUserProfileUsesSessionUser(t *testing.T) {
 	userSvc := &stubUserService{
@@ -290,7 +290,7 @@ func TestUserProfileUsesSessionUser(t *testing.T) {
 
 // TestUserAlertsListUsesSessionUser verifies alert history is scoped to the session user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestUserAlertsListUsesSessionUser(t *testing.T) {
 	userSvc := &stubUserService{
@@ -330,7 +330,7 @@ func TestUserAlertsListUsesSessionUser(t *testing.T) {
 
 // TestUserNotificationsListRequiresSession verifies notification history requires login.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestUserNotificationsListRequiresSession(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/user/notifications", nil)
@@ -345,7 +345,7 @@ func TestUserNotificationsListRequiresSession(t *testing.T) {
 
 // TestUserNotificationsListUsesSessionUser verifies notification history ignores query user ids.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestUserNotificationsListUsesSessionUser(t *testing.T) {
 	userSvc := &stubUserService{
@@ -386,7 +386,7 @@ func TestUserNotificationsListUsesSessionUser(t *testing.T) {
 
 // TestTelegramNotificationPreferencesRequiresSession verifies quiet-hours and digest preference APIs require login.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestTelegramNotificationPreferencesRequiresSession(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/user/telegram/preferences", strings.NewReader(`{}`))
@@ -401,7 +401,7 @@ func TestTelegramNotificationPreferencesRequiresSession(t *testing.T) {
 
 // TestTelegramNotificationPreferencesUsesSessionUser verifies quiet-hours and digest writes ignore external user ids.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestTelegramNotificationPreferencesUsesSessionUser(t *testing.T) {
 	userSvc := &stubUserService{profile: UserProfile{UserID: 42, TelegramDeliveryEnabled: true}}
@@ -440,7 +440,7 @@ func TestTelegramNotificationPreferencesUsesSessionUser(t *testing.T) {
 
 // TestTelegramBindingTokenRequiresSession verifies binding-token requests require login.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestTelegramBindingTokenRequiresSession(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/user/telegram/binding-token", nil)
@@ -455,7 +455,7 @@ func TestTelegramBindingTokenRequiresSession(t *testing.T) {
 
 // TestTelegramBindingTokenUsesSessionUser verifies binding tokens are created for the current user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestTelegramBindingTokenUsesSessionUser(t *testing.T) {
 	binding := &stubTelegramBindingService{rawToken: "bind-token", expiresAt: time.Unix(1710000000, 0).UTC()}
@@ -490,7 +490,7 @@ func TestTelegramBindingTokenUsesSessionUser(t *testing.T) {
 
 // TestTelegramDeliveryPreferenceRequiresSession verifies delivery preference writes require login.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestTelegramDeliveryPreferenceRequiresSession(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/user/telegram/delivery", strings.NewReader(`{"enabled":false}`))
@@ -505,7 +505,7 @@ func TestTelegramDeliveryPreferenceRequiresSession(t *testing.T) {
 
 // TestTelegramDeliveryPreferenceUsesSessionUser verifies delivery preferences update the current user only.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestTelegramDeliveryPreferenceUsesSessionUser(t *testing.T) {
 	userSvc := &stubUserService{profile: UserProfile{TelegramBound: true, TelegramChatIDMasked: "****2345"}}
@@ -537,7 +537,7 @@ func TestTelegramDeliveryPreferenceUsesSessionUser(t *testing.T) {
 
 // TestTelegramUnbindRequiresSession verifies Telegram unbind requires login.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestTelegramUnbindRequiresSession(t *testing.T) {
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/user/telegram/binding", nil)
@@ -552,7 +552,7 @@ func TestTelegramUnbindRequiresSession(t *testing.T) {
 
 // TestTelegramUnbindUsesSessionUser verifies Telegram unbind ignores query user ids.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestTelegramUnbindUsesSessionUser(t *testing.T) {
 	userSvc := &stubUserService{profile: UserProfile{TelegramDeliveryEnabled: true}}
@@ -584,7 +584,7 @@ func TestTelegramUnbindUsesSessionUser(t *testing.T) {
 
 // TestDashboardPageIsServed verifies the user dashboard page is separate from admin.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func TestDashboardPageIsServed(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)

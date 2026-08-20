@@ -26,7 +26,7 @@ func (s *stubSender) Send(_ context.Context, alert model.Alert) error {
 
 // stubEventHandler records replayed market events for API tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-02
 type stubEventHandler struct {
 	events []model.MarketEvent
@@ -34,7 +34,7 @@ type stubEventHandler struct {
 
 // HandleEvent records one replayed market event.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-02
 // @param _ Request context.
 // @param event Market event submitted through the replay API.
@@ -76,7 +76,7 @@ func (s *stubRuleService) ListEnabled(context.Context) ([]model.AlertRule, error
 
 // ListUserRules returns user-scoped rules for API tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func (s *stubRuleService) ListUserRules(_ context.Context, userID int64) ([]model.AlertRule, error) {
 	s.lastUserID = userID
@@ -85,7 +85,7 @@ func (s *stubRuleService) ListUserRules(_ context.Context, userID int64) ([]mode
 
 // CountUserRules returns the configured user rule count for API tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (s *stubRuleService) CountUserRules(context.Context, int64) (int64, error) {
 	return s.userCount, nil
@@ -99,7 +99,7 @@ func (s *stubRuleService) UpsertSystemRule(_ context.Context, rule model.AlertRu
 
 // UpsertUserRule records a user-scoped rule for API tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func (s *stubRuleService) UpsertUserRule(_ context.Context, rule model.AlertRule) error {
 	copy := rule
@@ -258,7 +258,7 @@ func TestAlertsTestRouteInvokesSender(t *testing.T) {
 
 // TestAdminReplayEventInvokesHandler verifies SIT replay events enter the normal event pipeline.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-02
 func TestAdminReplayEventInvokesHandler(t *testing.T) {
 	handler := &stubEventHandler{}
@@ -324,9 +324,43 @@ func TestRulesPostUpsertsRule(t *testing.T) {
 	}
 }
 
+// TestRulesPostRejectsUnsupportedRuleValues verifies invalid rule dimensions never reach persistence.
+//
+// Author: monsterfei
+// Date: 2026-08-20
+func TestRulesPostRejectsUnsupportedRuleValues(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		want string
+	}{
+		{name: "negative window", body: `{"exchange":"binance","symbol":"BTCUSDT","rule_type":"large_trade","threshold":1000,"window_sec":-1}`, want: "window_sec must be greater than 0"},
+		{name: "unknown rule type", body: `{"exchange":"binance","symbol":"BTCUSDT","rule_type":"unknown_type","threshold":1000}`, want: "unsupported rule_type"},
+		{name: "unknown exchange", body: `{"exchange":"unknown","symbol":"BTCUSDT","rule_type":"large_trade","threshold":1000}`, want: "unsupported exchange"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ruleSvc := &stubRuleService{}
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/rules", strings.NewReader(test.body))
+			req.Header.Set("Authorization", "Bearer secret")
+			rec := httptest.NewRecorder()
+
+			NewRouter(Dependencies{APIBearerToken: "secret", Rules: ruleSvc}).ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), test.want) {
+				t.Fatalf("expected 400 containing %q, got status=%d body=%s", test.want, rec.Code, rec.Body.String())
+			}
+			if ruleSvc.upserted != nil || ruleSvc.userRule != nil {
+				t.Fatalf("invalid rule reached persistence: system=%+v user=%+v", ruleSvc.upserted, ruleSvc.userRule)
+			}
+		})
+	}
+}
+
 // TestRulesPostUpsertsUserRule verifies protected rule writes can target one user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func TestRulesPostUpsertsUserRule(t *testing.T) {
 	ruleSvc := &stubRuleService{}
@@ -350,7 +384,7 @@ func TestRulesPostUpsertsUserRule(t *testing.T) {
 
 // TestRulesGetFiltersUserRules verifies rule reads can request one user's rules.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func TestRulesGetFiltersUserRules(t *testing.T) {
 	userID := int64(42)

@@ -42,7 +42,7 @@ func (s *RuntimeRuleService) ListEnabled(ctx context.Context) ([]model.AlertRule
 
 // ListUserRules returns rules owned by one user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param ctx Request context.
 // @param userID User id to filter.
@@ -53,7 +53,7 @@ func (s *RuntimeRuleService) ListUserRules(ctx context.Context, userID int64) ([
 
 // CountUserRules returns how many user-scoped rules belong to one user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param userID User id to count.
@@ -72,7 +72,7 @@ func (s *RuntimeRuleService) UpsertSystemRule(ctx context.Context, rule model.Al
 
 // UpsertUserRule persists a user rule without mutating the global system rule engine.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param ctx Request context.
 // @param rule User-scoped alert rule.

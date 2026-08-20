@@ -8,7 +8,7 @@ import (
 
 // UserDigestFlusher flushes due user digest notifications.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type UserDigestFlusher interface {
 	FlushUserDigests(context.Context, time.Time) error
@@ -16,7 +16,7 @@ type UserDigestFlusher interface {
 
 // UserDigestJob periodically sends due user digest notifications.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type UserDigestJob struct {
 	flusher  UserDigestFlusher
@@ -25,7 +25,7 @@ type UserDigestJob struct {
 
 // NewUserDigestJob creates a periodic user digest flush job.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param flusher Digest flusher.
 // @param interval Flush interval.
@@ -36,7 +36,7 @@ func NewUserDigestJob(flusher UserDigestFlusher, interval time.Duration) UserDig
 
 // RunOnce flushes digest notifications that are due at the provided time.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 // @param now Current time for due-window evaluation.
@@ -47,7 +47,7 @@ func (j UserDigestJob) RunOnce(ctx context.Context, now time.Time) error {
 
 // Start runs digest flushing periodically until the context is canceled.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param ctx Request context.
 func (j UserDigestJob) Start(ctx context.Context) {

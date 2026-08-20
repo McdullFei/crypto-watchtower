@@ -76,7 +76,7 @@ func (r AlertRepo) List(ctx context.Context, filter ListFilter) ([]model.Alert, 
 
 // ListForUser returns alerts that have notification logs owned by one user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param ctx Request context.
 // @param userID User id that owns the notification history.

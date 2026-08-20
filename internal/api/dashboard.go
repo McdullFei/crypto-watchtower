@@ -13,7 +13,7 @@ var dashboardAssets embed.FS
 
 // mountDashboardRoutes attaches the user dashboard static files.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param mux HTTP multiplexer to receive dashboard routes.
 func mountDashboardRoutes(mux *http.ServeMux) {
@@ -23,7 +23,7 @@ func mountDashboardRoutes(mux *http.ServeMux) {
 
 // dashboardIndexHandler serves the dashboard HTML shell.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @returns HTTP handler for the dashboard root page.
 func dashboardIndexHandler() http.Handler {
@@ -39,7 +39,7 @@ func dashboardIndexHandler() http.Handler {
 
 // dashboardFileHandler serves embedded dashboard assets.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @returns HTTP handler for dashboard asset paths.
 func dashboardFileHandler() http.Handler {

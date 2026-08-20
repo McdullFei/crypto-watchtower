@@ -15,22 +15,22 @@ import (
 var (
 	// ErrSubscriptionRuleLimitExceeded reports that a user has reached the plan rule limit.
 	//
-	// Author: __AUTHOR__
+	// Author: monsterfei
 	// Date: 2026-07-01
 	ErrSubscriptionRuleLimitExceeded = errors.New("subscription rule limit exceeded")
 
 	// ErrUserDisabled reports that a disabled user attempted a dashboard action.
 	//
-	// Author: __AUTHOR__
+	// Author: monsterfei
 	// Date: 2026-07-01
 	ErrUserDisabled = errors.New("user is disabled")
 )
 
 // UserProfile contains safe user dashboard profile metadata.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
-// modified by __AUTHOR__ on 2026-07-01
+// modified by monsterfei on 2026-07-01
 type UserProfile struct {
 	UserID                  int64                             `json:"user_id"`
 	TelegramBound           bool                              `json:"telegram_bound"`
@@ -45,7 +45,7 @@ type UserProfile struct {
 
 // UserNotificationLog contains safe notification delivery metadata for dashboard users.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type UserNotificationLog struct {
 	AlertID      string    `json:"alert_id"`
@@ -58,7 +58,7 @@ type UserNotificationLog struct {
 
 // UserService defines user dashboard reads required by API handlers.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 type UserService interface {
 	Profile(context.Context, int64) (UserProfile, error)
@@ -73,7 +73,7 @@ type UserService interface {
 
 // TelegramBindingService defines user-owned Telegram binding-token creation.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type TelegramBindingService interface {
 	CreateBindingToken(context.Context, int64) (string, time.Time, error)
@@ -81,7 +81,7 @@ type TelegramBindingService interface {
 
 // TelegramBindingTokenResponse contains a raw short-lived binding token.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type TelegramBindingTokenResponse struct {
 	Token     string    `json:"token"`
@@ -90,7 +90,7 @@ type TelegramBindingTokenResponse struct {
 
 // telegramDeliveryPreferenceRequest contains a Telegram delivery toggle payload.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type telegramDeliveryPreferenceRequest struct {
 	Enabled *bool `json:"enabled"`
@@ -98,7 +98,7 @@ type telegramDeliveryPreferenceRequest struct {
 
 // mountUserRoutes attaches protected user-facing dashboard APIs.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param mux HTTP multiplexer to receive routes.
 // @param deps Runtime dependencies required by user APIs.
@@ -175,7 +175,7 @@ func mountUserRoutes(mux *http.ServeMux, deps Dependencies) {
 
 // handleUserProfile returns safe profile and binding state for one user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param deps Runtime dependencies required by the handler.
 // @returns HTTP handler for user profile reads.
@@ -208,7 +208,7 @@ func handleUserProfile(deps Dependencies) http.HandlerFunc {
 
 // requireDashboardUser resolves an active session user or writes the API error response.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param w HTTP response writer.
 // @param r HTTP request containing session cookie.
@@ -233,7 +233,7 @@ func requireDashboardUser(w http.ResponseWriter, r *http.Request, deps Dependenc
 
 // handleUserAlertsList returns alert history delivered to one user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param deps Runtime dependencies required by the handler.
 // @returns HTTP handler for user alert history reads.
@@ -267,7 +267,7 @@ func handleUserAlertsList(deps Dependencies) http.HandlerFunc {
 
 // handleUserNotificationsList returns notification delivery logs for one session user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param deps Runtime dependencies required by the handler.
 // @returns HTTP handler for user notification-log reads.
@@ -300,11 +300,11 @@ func handleUserNotificationsList(deps Dependencies) http.HandlerFunc {
 
 // handleUserRulesList returns one user's personal rules.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param deps Runtime dependencies required by the handler.
 // @returns HTTP handler for user rule reads.
-// modified by __AUTHOR__ on 2026-07-02
+// modified by monsterfei on 2026-07-02
 func handleUserRulesList(deps Dependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentUser, ok, err := requireDashboardUser(w, r, deps)
@@ -334,7 +334,7 @@ func handleUserRulesList(deps Dependencies) http.HandlerFunc {
 
 // handleUserRulesPost writes one user-owned personal rule.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param deps Runtime dependencies required by the handler.
 // @returns HTTP handler for user rule writes.
@@ -396,7 +396,7 @@ func handleUserRulesPost(deps Dependencies) http.HandlerFunc {
 
 // handleTelegramBindingToken creates a short-lived Telegram binding token for the session user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param deps Runtime dependencies required by user APIs.
 // @returns HTTP handler for Telegram binding-token creation.
@@ -432,7 +432,7 @@ func handleTelegramBindingToken(deps Dependencies) http.HandlerFunc {
 
 // handleTelegramDeliveryPreferenceGet returns Telegram delivery preference for the session user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param deps Runtime dependencies required by user APIs.
 // @returns HTTP handler for Telegram delivery preference reads.
@@ -457,7 +457,7 @@ func handleTelegramDeliveryPreferenceGet(deps Dependencies) http.HandlerFunc {
 
 // handleTelegramDeliveryPreferencePut updates Telegram delivery preference for the session user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param deps Runtime dependencies required by user APIs.
 // @returns HTTP handler for Telegram delivery preference writes.
@@ -487,7 +487,7 @@ func handleTelegramDeliveryPreferencePut(deps Dependencies) http.HandlerFunc {
 
 // handleTelegramNotificationPreferencesGet returns Telegram quiet-hours and digest preferences.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param deps Runtime dependencies required by user APIs.
 // @returns HTTP handler for Telegram notification preference reads.
@@ -512,7 +512,7 @@ func handleTelegramNotificationPreferencesGet(deps Dependencies) http.HandlerFun
 
 // handleTelegramNotificationPreferencesPut updates Telegram quiet-hours and digest preferences.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param deps Runtime dependencies required by user APIs.
 // @returns HTTP handler for Telegram notification preference writes.
@@ -547,7 +547,7 @@ func handleTelegramNotificationPreferencesPut(deps Dependencies) http.HandlerFun
 
 // handleTelegramUnbind clears Telegram binding for the current session user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param deps Runtime dependencies required by user APIs.
 // @returns HTTP handler for Telegram unbind.
@@ -572,7 +572,7 @@ func handleTelegramUnbind(deps Dependencies) http.HandlerFunc {
 
 // requiredUserIDFromQuery parses a required positive user id from query parameters.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param r HTTP request containing user_id.
 // @returns Parsed user id or validation error.
@@ -589,7 +589,7 @@ func requiredUserIDFromQuery(r *http.Request) (int64, error) {
 
 // userLimitFromQuery parses a bounded user list limit.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param r HTTP request containing optional limit.
 // @returns Safe bounded list limit.
@@ -606,7 +606,7 @@ func userLimitFromQuery(r *http.Request) int {
 
 // normalizeTelegramNotificationPreferences applies safe defaults to optional preference fields.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param preferences Telegram quiet-hours and digest preference payload.
 // @returns Preference payload with default quiet-hours and digest interval values.
@@ -628,7 +628,7 @@ func normalizeTelegramNotificationPreferences(preferences model.UserNotification
 
 // validateTelegramNotificationPreferences checks quiet-hours and digest bounds before persistence.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param preferences Telegram quiet-hours and digest preference payload.
 // @returns Error when a payload value is invalid.

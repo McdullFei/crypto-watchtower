@@ -17,7 +17,7 @@ type AlertSender interface {
 
 // EventHandler handles replayed market events through the normal alert pipeline.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-02
 type EventHandler interface {
 	HandleEvent(context.Context, model.MarketEvent) error
@@ -40,7 +40,7 @@ type Dependencies struct {
 
 // replayEventRequest carries one protected SIT market event replay payload.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-02
 type replayEventRequest struct {
 	ID         string         `json:"id"`
@@ -58,11 +58,11 @@ type replayEventRequest struct {
 
 // NewRouter wires public, user-facing, and operator routes into one HTTP handler.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param deps Runtime dependencies required by API routes.
 // @returns HTTP handler for the service.
-// modified by __AUTHOR__ on 2026-06-30
+// modified by monsterfei on 2026-06-30
 func NewRouter(deps Dependencies) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/health", NewHealthHandler(deps.Collectors, deps.Dependencies))
@@ -132,7 +132,7 @@ func NewRouter(deps Dependencies) http.Handler {
 
 // handleReplayEvent accepts one protected SIT event and sends it through the configured event pipeline.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-02
 // @param deps Runtime dependencies including the event handler.
 // @returns HTTP handler for market event replay.
@@ -186,7 +186,7 @@ func handleReplayEvent(deps Dependencies) http.HandlerFunc {
 
 // toModel validates and converts a replay request into a market event.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-02
 // @param now Current time used for default timestamps.
 // @returns Market event model or validation error.
@@ -221,13 +221,13 @@ func (r replayEventRequest) toModel(now time.Time) (model.MarketEvent, error) {
 
 // badRequestError is a minimal validation error for replay request parsing.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-02
 type badRequestError string
 
 // Error returns the validation failure message.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-02
 // @returns Validation error text.
 func (e badRequestError) Error() string {

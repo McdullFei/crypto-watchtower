@@ -10,7 +10,7 @@ import (
 
 // ValidateStrongPassword enforces the account password complexity policy.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param password Raw password to validate.
 // @returns Error when the password is weak.
@@ -42,7 +42,7 @@ func ValidateStrongPassword(password string) error {
 
 // HashPassword hashes a validated raw password with bcrypt.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param password Raw password.
 // @returns Bcrypt password hash.
@@ -59,7 +59,7 @@ func HashPassword(password string) (string, error) {
 
 // CheckPassword compares a raw password against a bcrypt hash.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param hash Stored bcrypt hash.
 // @param password Raw password.

@@ -68,7 +68,7 @@ func TestWebhookNotifierReturnsErrorOnNon2xx(t *testing.T) {
 
 // TestWebhookNotifierRedactsTransportErrorURL verifies transport errors do not leak webhook secrets.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-02
 func TestWebhookNotifierRedactsTransportErrorURL(t *testing.T) {
 	notifier := NewWebhookNotifier("http://127.0.0.1:1/webhook?secret=secret-token", "discord", &http.Client{})

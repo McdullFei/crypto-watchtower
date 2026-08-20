@@ -27,7 +27,7 @@ func (s *stubRuleRepository) ListSystemRules(context.Context) ([]model.AlertRule
 
 // ListUserRules returns user-scoped rules for runtime service tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func (s *stubRuleRepository) ListUserRules(context.Context, int64) ([]model.AlertRule, error) {
 	return append([]model.AlertRule(nil), s.userRules...), nil
@@ -35,7 +35,7 @@ func (s *stubRuleRepository) ListUserRules(context.Context, int64) ([]model.Aler
 
 // CountUserRules returns the configured user rule count for runtime service tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (s *stubRuleRepository) CountUserRules(context.Context, int64) (int64, error) {
 	return s.userCount, nil
@@ -48,7 +48,7 @@ func (s *stubRuleRepository) UpsertSystemRule(_ context.Context, rule model.Aler
 
 // UpsertUserRule stores a user-scoped rule for runtime service tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func (s *stubRuleRepository) UpsertUserRule(_ context.Context, rule model.AlertRule) error {
 	s.userUpserted = append(s.userUpserted, rule)
@@ -141,7 +141,7 @@ func TestRuntimeRuleServiceUpsertUpdatesRuntimeEngine(t *testing.T) {
 
 // TestRuntimeRuleServiceUpsertUserRuleDoesNotUpdateSystemEngine verifies user rules stay out of the global engine.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func TestRuntimeRuleServiceUpsertUserRuleDoesNotUpdateSystemEngine(t *testing.T) {
 	engine := NewEngine(Config{

@@ -14,7 +14,7 @@ const sessionCookieName = "cw_session"
 
 // AuthService defines session-account operations required by API handlers.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type AuthService interface {
 	Register(context.Context, authsvc.RegisterRequest) (authsvc.AuthSession, error)
@@ -28,7 +28,7 @@ type AuthService interface {
 
 // authEmailPasswordRequest contains register and login credentials.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type authEmailPasswordRequest struct {
 	Email    string `json:"email"`
@@ -37,7 +37,7 @@ type authEmailPasswordRequest struct {
 
 // passwordResetRequest contains a password reset request payload.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type passwordResetRequest struct {
 	Email string `json:"email"`
@@ -45,7 +45,7 @@ type passwordResetRequest struct {
 
 // passwordResetConfirmRequest contains a reset-token password update payload.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type passwordResetConfirmRequest struct {
 	Token       string `json:"token"`
@@ -54,7 +54,7 @@ type passwordResetConfirmRequest struct {
 
 // changePasswordRequest contains a logged-in password change payload.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type changePasswordRequest struct {
 	CurrentPassword string `json:"current_password"`
@@ -63,7 +63,7 @@ type changePasswordRequest struct {
 
 // authUserResponse contains safe account data returned by auth APIs.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type authUserResponse struct {
 	UserID    int64     `json:"user_id"`
@@ -75,7 +75,7 @@ type authUserResponse struct {
 
 // mountAuthRoutes attaches public auth routes and logged-in password changes.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param mux HTTP multiplexer to receive routes.
 // @param deps Runtime dependencies required by auth APIs.
@@ -90,7 +90,7 @@ func mountAuthRoutes(mux *http.ServeMux, deps Dependencies) {
 
 // methodOnly wraps a handler with an HTTP method check.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param method Allowed HTTP method.
 // @param next Handler to invoke when method matches.
@@ -107,7 +107,7 @@ func methodOnly(method string, next http.HandlerFunc) http.HandlerFunc {
 
 // handleAuthRegister registers an account and sets its session cookie.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param deps Runtime dependencies required by auth APIs.
 // @returns HTTP handler for registration.
@@ -134,7 +134,7 @@ func handleAuthRegister(deps Dependencies) http.HandlerFunc {
 
 // handleAuthLogin validates credentials and sets a session cookie.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param deps Runtime dependencies required by auth APIs.
 // @returns HTTP handler for login.
@@ -161,7 +161,7 @@ func handleAuthLogin(deps Dependencies) http.HandlerFunc {
 
 // handleAuthLogout revokes and clears the current session cookie.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param deps Runtime dependencies required by auth APIs.
 // @returns HTTP handler for logout.
@@ -182,7 +182,7 @@ func handleAuthLogout(deps Dependencies) http.HandlerFunc {
 
 // handlePasswordResetRequest accepts reset requests without revealing account existence.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param deps Runtime dependencies required by auth APIs.
 // @returns HTTP handler for reset requests.
@@ -212,7 +212,7 @@ func handlePasswordResetRequest(deps Dependencies) http.HandlerFunc {
 
 // handlePasswordResetConfirm consumes a reset token and updates the password.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param deps Runtime dependencies required by auth APIs.
 // @returns HTTP handler for reset confirmation.
@@ -237,19 +237,15 @@ func handlePasswordResetConfirm(deps Dependencies) http.HandlerFunc {
 
 // handleChangePassword changes the current user's password.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param deps Runtime dependencies required by auth APIs.
 // @returns HTTP handler for logged-in password changes.
+// modified by monsterfei on 2026-08-20
 func handleChangePassword(deps Dependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		user, ok, err := requireUser(r, deps)
-		if err != nil {
-			writeInternalError(w, err)
-			return
-		}
-		if !ok {
-			writeUnauthorized(w)
+		user, ok, err := requireDashboardUser(w, r, deps)
+		if err != nil || !ok {
 			return
 		}
 		var req changePasswordRequest
@@ -267,7 +263,7 @@ func handleChangePassword(deps Dependencies) http.HandlerFunc {
 
 // requireAuthService writes a not-configured response when auth is unavailable.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param w HTTP response writer.
 // @param deps Runtime dependencies.
@@ -282,7 +278,7 @@ func requireAuthService(w http.ResponseWriter, deps Dependencies) (AuthService, 
 
 // requireUser resolves the current user from the session cookie.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param r HTTP request containing the session cookie.
 // @param deps Runtime dependencies.
@@ -296,7 +292,7 @@ func requireUser(r *http.Request, deps Dependencies) (model.User, bool, error) {
 
 // currentSessionToken returns the raw session token from the request cookie.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param r HTTP request.
 // @returns Raw session token or empty string.
@@ -310,7 +306,7 @@ func currentSessionToken(r *http.Request) string {
 
 // setSessionCookie writes an HttpOnly session cookie.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param w HTTP response writer.
 // @param token Raw session token.
@@ -328,7 +324,7 @@ func setSessionCookie(w http.ResponseWriter, token string, expiresAt time.Time) 
 
 // clearSessionCookie expires the session cookie in the browser.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param w HTTP response writer.
 func clearSessionCookie(w http.ResponseWriter) {
@@ -345,7 +341,7 @@ func clearSessionCookie(w http.ResponseWriter) {
 
 // safeAuthUser converts an auth session into a password-free response.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param session Auth session returned by the auth service.
 // @returns Safe account response.

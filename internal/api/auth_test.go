@@ -16,7 +16,7 @@ import (
 
 // stubAuthService captures auth API calls for handler tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type stubAuthService struct {
 	registerErr error
@@ -30,7 +30,7 @@ type stubAuthService struct {
 
 // Register returns a configured registration response for auth API tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (s *stubAuthService) Register(_ context.Context, req authsvc.RegisterRequest) (authsvc.AuthSession, error) {
 	if s.registerErr != nil {
@@ -45,7 +45,7 @@ func (s *stubAuthService) Register(_ context.Context, req authsvc.RegisterReques
 
 // Login returns a configured login response for auth API tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (s *stubAuthService) Login(_ context.Context, req authsvc.LoginRequest) (authsvc.AuthSession, error) {
 	if s.loginErr != nil {
@@ -60,7 +60,7 @@ func (s *stubAuthService) Login(_ context.Context, req authsvc.LoginRequest) (au
 
 // Logout records the token revoked by the auth API.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (s *stubAuthService) Logout(_ context.Context, token string) error {
 	s.logoutToken = token
@@ -69,7 +69,7 @@ func (s *stubAuthService) Logout(_ context.Context, token string) error {
 
 // CurrentUser resolves the configured current user for auth API tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (s *stubAuthService) CurrentUser(_ context.Context, _ string) (model.User, bool, error) {
 	return s.currentUser, s.currentOK, nil
@@ -77,7 +77,7 @@ func (s *stubAuthService) CurrentUser(_ context.Context, _ string) (model.User, 
 
 // RequestPasswordReset returns the configured reset token for auth API tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (s *stubAuthService) RequestPasswordReset(_ context.Context, _ string) (string, error) {
 	return s.resetToken, nil
@@ -85,7 +85,7 @@ func (s *stubAuthService) RequestPasswordReset(_ context.Context, _ string) (str
 
 // ConfirmPasswordReset validates reset confirmation for auth API tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (s *stubAuthService) ConfirmPasswordReset(_ context.Context, _ string, password string) error {
 	if password == "weak" {
@@ -96,7 +96,7 @@ func (s *stubAuthService) ConfirmPasswordReset(_ context.Context, _ string, pass
 
 // ChangePassword records the user id used for password changes in auth API tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func (s *stubAuthService) ChangePassword(_ context.Context, userID int64, _ string, _ string) error {
 	s.changedUser = userID
@@ -105,7 +105,7 @@ func (s *stubAuthService) ChangePassword(_ context.Context, userID int64, _ stri
 
 // TestAuthRegisterRejectsWeakPassword verifies registration errors are returned as bad requests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestAuthRegisterRejectsWeakPassword(t *testing.T) {
 	auth := &stubAuthService{registerErr: errors.New("password must be at least 8 characters")}
@@ -121,7 +121,7 @@ func TestAuthRegisterRejectsWeakPassword(t *testing.T) {
 
 // TestAuthRegisterSetsSessionCookie verifies registration sets an HttpOnly session cookie.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestAuthRegisterSetsSessionCookie(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", strings.NewReader(`{"email":"User@example.com","password":"Strong1!"}`))
@@ -134,7 +134,7 @@ func TestAuthRegisterSetsSessionCookie(t *testing.T) {
 
 // TestAuthLoginSetsSessionCookie verifies login sets an HttpOnly session cookie.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestAuthLoginSetsSessionCookie(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(`{"email":"user@example.com","password":"Strong1!"}`))
@@ -147,7 +147,7 @@ func TestAuthLoginSetsSessionCookie(t *testing.T) {
 
 // TestAuthLogoutClearsSessionCookie verifies logout revokes and clears the current session cookie.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestAuthLogoutClearsSessionCookie(t *testing.T) {
 	auth := &stubAuthService{}
@@ -168,7 +168,7 @@ func TestAuthLogoutClearsSessionCookie(t *testing.T) {
 
 // TestPasswordResetRequestReturnsGenericResponse verifies reset requests hide account existence.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestPasswordResetRequestReturnsGenericResponse(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/password-reset/request", strings.NewReader(`{"email":"missing@example.com"}`))
@@ -186,7 +186,7 @@ func TestPasswordResetRequestReturnsGenericResponse(t *testing.T) {
 
 // TestPasswordResetConfirmRejectsWeakPassword verifies reset confirmation enforces password policy errors.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestPasswordResetConfirmRejectsWeakPassword(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/password-reset/confirm", strings.NewReader(`{"token":"reset-token","new_password":"weak"}`))
@@ -201,7 +201,7 @@ func TestPasswordResetConfirmRejectsWeakPassword(t *testing.T) {
 
 // TestChangePasswordRequiresSession verifies password changes require a valid session.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestChangePasswordRequiresSession(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/user/password", strings.NewReader(`{"current_password":"Strong1!","new_password":"Better1!"}`))
@@ -214,9 +214,32 @@ func TestChangePasswordRequiresSession(t *testing.T) {
 	}
 }
 
+// TestChangePasswordRejectsDisabledSession verifies disabled accounts cannot mutate credentials through an existing session.
+//
+// Author: monsterfei
+// Date: 2026-08-20
+func TestChangePasswordRejectsDisabledSession(t *testing.T) {
+	auth := &stubAuthService{
+		currentUser: model.User{ID: 42, Status: model.UserStatusDisabled},
+		currentOK:   true,
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/user/password", strings.NewReader(`{"current_password":"Strong1!","new_password":"Better1!"}`))
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "disabled-session"})
+	rec := httptest.NewRecorder()
+
+	NewRouter(Dependencies{Auth: auth}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), ErrUserDisabled.Error()) {
+		t.Fatalf("expected disabled account response, status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if auth.changedUser != 0 {
+		t.Fatalf("disabled account reached password mutation for user %d", auth.changedUser)
+	}
+}
+
 // assertSessionCookie verifies a response sets the expected session cookie attributes.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func assertSessionCookie(t *testing.T, rec *httptest.ResponseRecorder, name string, value string) {
 	t.Helper()
@@ -231,7 +254,7 @@ func assertSessionCookie(t *testing.T, rec *httptest.ResponseRecorder, name stri
 
 // findCookie returns a cookie by name from a response cookie list.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func findCookie(cookies []*http.Cookie, name string) *http.Cookie {
 	for _, cookie := range cookies {
@@ -244,7 +267,7 @@ func findCookie(cookies []*http.Cookie, name string) *http.Cookie {
 
 // decodeAuthPayload decodes a standard auth API response for tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func decodeAuthPayload(t *testing.T, rec *httptest.ResponseRecorder, target any) {
 	t.Helper()

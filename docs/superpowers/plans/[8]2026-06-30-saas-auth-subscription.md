@@ -73,7 +73,7 @@ Add this test to `internal/storage/migration_test.go`:
 ```go
 // TestAuthMigrationAddsSessionAndPasswordTables verifies auth schema changes are present.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func TestAuthMigrationAddsSessionAndPasswordTables(t *testing.T) {
 	raw, err := os.ReadFile("../../migrations/004_auth_subscription.sql")
@@ -180,9 +180,9 @@ const (
 
 // User stores account, notification, and subscription metadata.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
-// modified by __AUTHOR__ on 2026-06-30
+// modified by monsterfei on 2026-06-30
 type User struct {
 	ID             int64
 	Email          string
@@ -197,7 +197,7 @@ type User struct {
 
 // UserSession stores one persisted login session.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 type UserSession struct {
 	ID        int64
@@ -211,7 +211,7 @@ type UserSession struct {
 
 // PasswordResetToken stores one expiring password reset token.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 type PasswordResetToken struct {
 	ID        int64
@@ -306,7 +306,7 @@ import (
 
 // ValidateStrongPassword enforces the account password complexity policy.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param password Raw password to validate.
 // @returns Error when the password is weak.
@@ -338,7 +338,7 @@ func ValidateStrongPassword(password string) error {
 
 // HashPassword hashes a validated raw password with bcrypt.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param password Raw password.
 // @returns Bcrypt password hash.
@@ -355,7 +355,7 @@ func HashPassword(password string) (string, error) {
 
 // CheckPassword compares a raw password against a bcrypt hash.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param hash Stored bcrypt hash.
 // @param password Raw password.
@@ -517,7 +517,7 @@ Add to `internal/integration/postgres_redis_test.go`:
 ```go
 // TestAuthRepositoriesPersistSessionsAndResetTokens verifies auth persistence against PostgreSQL.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 func TestAuthRepositoriesPersistSessionsAndResetTokens(t *testing.T) {
 	ctx := context.Background()
@@ -683,7 +683,7 @@ Auth AuthConfig `yaml:"auth"`
 
 // AuthConfig contains account-session settings.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 type AuthConfig struct {
 	SessionTTLHours        int  `yaml:"session_ttl_hours"`
@@ -851,7 +851,7 @@ Add to `internal/storage/alert_rule_repo.go`:
 ```go
 // CountUserRules returns how many user-scoped rules belong to one user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param ctx Request context.
 // @param userID User id to count.

@@ -8,7 +8,7 @@ import (
 
 // TestUserDigestJobRunOnceFlushesDueDigests verifies digest jobs delegate one flush cycle.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 func TestUserDigestJobRunOnceFlushesDueDigests(t *testing.T) {
 	flusher := &fakeUserDigestFlusher{}
@@ -25,7 +25,7 @@ func TestUserDigestJobRunOnceFlushesDueDigests(t *testing.T) {
 
 // fakeUserDigestFlusher records digest flush calls for scheduler tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type fakeUserDigestFlusher struct {
 	lastNow time.Time
@@ -33,7 +33,7 @@ type fakeUserDigestFlusher struct {
 
 // FlushUserDigests records one digest flush request for scheduler tests.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param now Current time passed by the job.
 // @returns Nil error for tests.

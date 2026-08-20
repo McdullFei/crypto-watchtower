@@ -46,7 +46,7 @@ type TelegramUserBinder interface {
 
 // TelegramBindingConsumer consumes binding tokens from Telegram /start commands.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 type TelegramBindingConsumer interface {
 	BindTelegramChat(context.Context, string, string) (int64, bool, error)
@@ -183,7 +183,7 @@ func normalizeTelegramCommand(text string) string {
 
 // parseTelegramCommand returns the command and arguments from one Telegram text message.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-07-01
 // @param text Telegram message text.
 // @returns Command without bot suffix and remaining arguments.

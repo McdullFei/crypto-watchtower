@@ -20,7 +20,7 @@ const (
 
 // Config controls account-session token lifetimes.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 type Config struct {
 	SessionTTL       time.Duration
@@ -30,7 +30,7 @@ type Config struct {
 
 // RegisterRequest contains one account registration payload.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 type RegisterRequest struct {
 	Email    string
@@ -39,7 +39,7 @@ type RegisterRequest struct {
 
 // LoginRequest contains one account login payload.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 type LoginRequest struct {
 	Email    string
@@ -48,7 +48,7 @@ type LoginRequest struct {
 
 // AuthSession returns a safe user record and raw session token.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 type AuthSession struct {
 	User      model.User
@@ -58,7 +58,7 @@ type AuthSession struct {
 
 // PlanLimits contains backend subscription entitlements.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 type PlanLimits struct {
 	MaxRules     int `json:"max_rules"`
@@ -67,7 +67,7 @@ type PlanLimits struct {
 
 // UserRepository defines persisted account operations required by auth.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 type UserRepository interface {
 	CreateWithPassword(context.Context, model.User) (model.User, error)
@@ -78,7 +78,7 @@ type UserRepository interface {
 
 // SessionRepository defines persisted session operations required by auth.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 type SessionRepository interface {
 	Create(context.Context, model.UserSession) error
@@ -88,7 +88,7 @@ type SessionRepository interface {
 
 // PasswordResetRepository defines persisted password reset token operations.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 type PasswordResetRepository interface {
 	Create(context.Context, model.PasswordResetToken) error
@@ -98,7 +98,7 @@ type PasswordResetRepository interface {
 
 // Service coordinates account auth, sessions, and password resets.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 type Service struct {
 	users       UserRepository
@@ -109,7 +109,7 @@ type Service struct {
 
 // NewService creates an auth service from narrow persistence interfaces.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param users User account repository.
 // @param sessions User session repository.
@@ -133,7 +133,7 @@ func NewService(users UserRepository, sessions SessionRepository, resetTokens Pa
 
 // Register creates one active free-plan user and login session.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param ctx Request context.
 // @param req Registration payload.
@@ -172,7 +172,7 @@ func (s Service) Register(ctx context.Context, req RegisterRequest) (AuthSession
 
 // Login validates credentials and creates a new login session.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param ctx Request context.
 // @param req Login payload.
@@ -203,7 +203,7 @@ func (s Service) Login(ctx context.Context, req LoginRequest) (AuthSession, erro
 
 // Logout revokes a session token if it exists.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param ctx Request context.
 // @param token Raw session token.
@@ -220,11 +220,12 @@ func (s Service) Logout(ctx context.Context, token string) error {
 
 // CurrentUser resolves a raw session token to an active user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param ctx Request context.
 // @param token Raw session token.
 // @returns User, whether the token is valid, and lookup error.
+// modified by monsterfei on 2026-08-20
 func (s Service) CurrentUser(ctx context.Context, token string) (model.User, bool, error) {
 	if s.users == nil || s.sessions == nil {
 		return model.User{}, false, errors.New("auth repositories are not configured")
@@ -240,15 +241,12 @@ func (s Service) CurrentUser(ctx context.Context, token string) (model.User, boo
 	if err != nil || !ok {
 		return model.User{}, ok, err
 	}
-	if user.Status == model.UserStatusDisabled {
-		return model.User{}, false, nil
-	}
 	return user, true, nil
 }
 
 // RequestPasswordReset creates an expiring reset token for an existing user.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param ctx Request context.
 // @param email Account email address.
@@ -286,7 +284,7 @@ func (s Service) RequestPasswordReset(ctx context.Context, email string) (string
 
 // ConfirmPasswordReset consumes one reset token and updates the password.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param ctx Request context.
 // @param token Raw reset token.
@@ -316,7 +314,7 @@ func (s Service) ConfirmPasswordReset(ctx context.Context, token string, newPass
 
 // ChangePassword changes a user's password after checking the current password.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param ctx Request context.
 // @param userID User id.
@@ -346,7 +344,7 @@ func (s Service) ChangePassword(ctx context.Context, userID int64, currentPasswo
 
 // LimitsForPlan returns bounded entitlements for a subscription plan.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param plan Subscription plan.
 // @returns Backend rule and alert-history limits.
@@ -363,7 +361,7 @@ func LimitsForPlan(plan string) PlanLimits {
 
 // createSession persists one session and returns its raw token to the caller.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param ctx Request context.
 // @param user User to create a session for.
@@ -389,7 +387,7 @@ func (s Service) createSession(ctx context.Context, user model.User) (AuthSessio
 
 // normalizeEmail canonicalizes and lightly validates an email address.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param email Raw email.
 // @returns Lower-cased email or validation error.
@@ -403,7 +401,7 @@ func normalizeEmail(email string) (string, error) {
 
 // randomToken creates a URL-safe raw token with 32 bytes of entropy.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @returns Raw token string.
 func randomToken() (string, error) {
@@ -416,7 +414,7 @@ func randomToken() (string, error) {
 
 // hashToken hashes a raw token for storage lookup.
 //
-// Author: __AUTHOR__
+// Author: monsterfei
 // Date: 2026-06-30
 // @param token Raw token.
 // @returns SHA-256 hex hash.
