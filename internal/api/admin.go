@@ -5,6 +5,7 @@ import (
 	"context"
 	"embed"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -219,10 +220,17 @@ func adminFileHandler() http.Handler {
 	return http.StripPrefix("/admin/", http.FileServer(http.FS(sub)))
 }
 
+// writeInternalError logs an internal failure and returns a safe client response.
+//
+// Author: monsterfei
+// Date: 2026-08-29
+// @param w HTTP response writer.
+// @param err Internal error retained in server logs.
 func writeInternalError(w http.ResponseWriter, err error) {
+	slog.Error("api request failed", "err", err)
 	writeJSON(w, http.StatusInternalServerError, map[string]any{
 		"code":    500,
-		"message": err.Error(),
+		"message": "internal server error",
 		"data":    nil,
 	})
 }

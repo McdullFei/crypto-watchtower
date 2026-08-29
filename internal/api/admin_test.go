@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,6 +12,29 @@ import (
 
 	"github.com/renfei198727/crypto-watchtower/internal/model"
 )
+
+// TestWriteInternalErrorDoesNotExposeCause verifies internal failures return a safe client message.
+//
+// Author: monsterfei
+// Date: 2026-08-29
+func TestWriteInternalErrorDoesNotExposeCause(t *testing.T) {
+	rec := httptest.NewRecorder()
+
+	writeInternalError(rec, errors.New("connect postgres://db-user:secret@postgres/internal"))
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
+	var payload struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Message != "internal server error" {
+		t.Fatalf("unexpected client message: %q", payload.Message)
+	}
+}
 
 type stubAdminService struct {
 	overview      AdminOverview

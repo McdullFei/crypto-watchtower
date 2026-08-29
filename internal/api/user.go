@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	_ "time/tzdata"
 
 	authsvc "github.com/renfei198727/crypto-watchtower/internal/auth"
 	"github.com/renfei198727/crypto-watchtower/internal/model"
@@ -632,9 +633,16 @@ func normalizeTelegramNotificationPreferences(preferences model.UserNotification
 // Date: 2026-07-01
 // @param preferences Telegram quiet-hours and digest preference payload.
 // @returns Error when a payload value is invalid.
+// modified by monsterfei on 2026-08-29
 func validateTelegramNotificationPreferences(preferences model.UserNotificationPreferences) error {
+	if len(preferences.TelegramQuietHoursStart) != 5 || preferences.TelegramQuietHoursStart[2] != ':' {
+		return errors.New("telegram_quiet_hours_start must use HH:MM")
+	}
 	if _, err := time.Parse("15:04", preferences.TelegramQuietHoursStart); err != nil {
 		return errors.New("telegram_quiet_hours_start must use HH:MM")
+	}
+	if len(preferences.TelegramQuietHoursEnd) != 5 || preferences.TelegramQuietHoursEnd[2] != ':' {
+		return errors.New("telegram_quiet_hours_end must use HH:MM")
 	}
 	if _, err := time.Parse("15:04", preferences.TelegramQuietHoursEnd); err != nil {
 		return errors.New("telegram_quiet_hours_end must use HH:MM")

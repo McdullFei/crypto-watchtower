@@ -438,6 +438,37 @@ func TestTelegramNotificationPreferencesUsesSessionUser(t *testing.T) {
 	}
 }
 
+// TestTelegramNotificationPreferencesRejectsNonPaddedTime verifies quiet-hours times require strict HH:MM formatting.
+//
+// Author: monsterfei
+// Date: 2026-08-29
+func TestTelegramNotificationPreferencesRejectsNonPaddedTime(t *testing.T) {
+	userSvc := &stubUserService{profile: UserProfile{UserID: 42, TelegramDeliveryEnabled: true}}
+	body := strings.NewReader(`{
+		"telegram_quiet_hours_enabled": true,
+		"telegram_quiet_hours_start": "7:00",
+		"telegram_quiet_hours_end": "08:00",
+		"telegram_quiet_hours_timezone": "Asia/Shanghai",
+		"telegram_digest_enabled": true,
+		"telegram_digest_interval_min": 60
+	}`)
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/user/telegram/preferences", body)
+	req.AddCookie(&http.Cookie{Name: "cw_session", Value: "session-token"})
+	rec := httptest.NewRecorder()
+
+	NewRouter(Dependencies{
+		Auth: &stubAuthService{currentUser: model.User{ID: 42, Status: model.UserStatusActive, Plan: model.UserPlanFree}, currentOK: true},
+		User: userSvc,
+	}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
+	if userSvc.lastUserID != 0 {
+		t.Fatalf("invalid preferences must not be persisted for user %d", userSvc.lastUserID)
+	}
+}
+
 // TestTelegramBindingTokenRequiresSession verifies binding-token requests require login.
 //
 // Author: monsterfei
