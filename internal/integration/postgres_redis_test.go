@@ -221,6 +221,8 @@ func TestPostgresRedisRepositoriesExerciseRealDependencies(t *testing.T) {
 //
 // Author: monsterfei
 // Date: 2026-06-30
+// modified by monsterfei on 2026-09-01
+// @param t Testing context.
 func TestAuthRepositoriesPersistSessionsAndResetTokens(t *testing.T) {
 	ctx := context.Background()
 	repos := setupIntegrationRepositories(t)
@@ -238,12 +240,15 @@ func TestAuthRepositoriesPersistSessionsAndResetTokens(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
+	t.Cleanup(func() {
+		_, _ = repos.Users.DB.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, user.ID)
+	})
 	found, ok, err := repos.Users.FindByEmail(ctx, strings.ToUpper(user.Email))
 	if err != nil || !ok || found.ID != user.ID || found.PasswordHash != user.PasswordHash {
 		t.Fatalf("find user by email: user=%+v ok=%v err=%v", found, ok, err)
 	}
 	expiresAt := now.Add(time.Hour)
-	sessionHash := strings.Repeat("a", 63) + suffix[len(suffix)-1:]
+	sessionHash := strings.Repeat("a", 64-len(suffix)) + suffix
 	if err := repos.Sessions.Create(ctx, model.UserSession{
 		UserID:    user.ID,
 		TokenHash: sessionHash,
@@ -264,7 +269,7 @@ func TestAuthRepositoriesPersistSessionsAndResetTokens(t *testing.T) {
 		t.Fatalf("expected revoked session to be inactive, ok=%v err=%v", ok, err)
 	}
 
-	resetHash := strings.Repeat("b", 63) + suffix[len(suffix)-1:]
+	resetHash := strings.Repeat("b", 64-len(suffix)) + suffix
 	if err := repos.PasswordResetTokens.Create(ctx, model.PasswordResetToken{
 		UserID:    user.ID,
 		TokenHash: resetHash,
@@ -289,6 +294,8 @@ func TestAuthRepositoriesPersistSessionsAndResetTokens(t *testing.T) {
 //
 // Author: monsterfei
 // Date: 2026-07-01
+// modified by monsterfei on 2026-09-01
+// @param t Testing context.
 func TestTelegramBindingRepositoriesPersistAndConsumeTokens(t *testing.T) {
 	ctx := context.Background()
 	repos := setupIntegrationRepositories(t)
@@ -306,8 +313,11 @@ func TestTelegramBindingRepositoriesPersistAndConsumeTokens(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
+	t.Cleanup(func() {
+		_, _ = repos.Users.DB.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, user.ID)
+	})
 
-	tokenHash := strings.Repeat("c", 63) + suffix[len(suffix)-1:]
+	tokenHash := strings.Repeat("c", 64-len(suffix)) + suffix
 	if err := repos.TelegramBindingTokens.Create(ctx, model.TelegramBindingToken{
 		UserID:    user.ID,
 		TokenHash: tokenHash,
@@ -493,6 +503,102 @@ func TestUserTelegramUnbindClearsChatAndPreservesDeliveryPreference(t *testing.T
 	}
 	if found.TelegramDeliveryEnabled {
 		t.Fatalf("expected telegram delivery preference preserved as disabled, got %+v", found)
+	}
+}
+
+// TestAlertRepositoryListForUserHandlesNullableRuleID verifies user alert history accepts legacy alerts without a rule id.
+//
+// Author: monsterfei
+// Date: 2026-08-31
+// @param t Testing context.
+func TestAlertRepositoryListForUserHandlesNullableRuleID(t *testing.T) {
+	repos := setupIntegrationRepositories(t)
+	ctx := context.Background()
+	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
+	now := time.Now().UTC()
+
+	var userID int64
+	if err := repos.Users.DB.QueryRow(ctx, `
+		INSERT INTO users (email, created_at, updated_at)
+		VALUES ($1, $2, $3)
+		RETURNING id
+	`, "nullable-rule-"+suffix+"@example.test", now, now).Scan(&userID); err != nil {
+		t.Fatalf("insert user: %v", err)
+	}
+	alertID := "nullable-rule-alert-" + suffix
+	t.Cleanup(func() {
+		_, _ = repos.NotificationLogs.DB.Exec(context.Background(), `DELETE FROM notification_logs WHERE alert_id = $1`, alertID)
+		_, _ = repos.Alerts.DB.Exec(context.Background(), `DELETE FROM alerts WHERE id = $1`, alertID)
+		_, _ = repos.Users.DB.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, userID)
+	})
+
+	if _, err := repos.Alerts.DB.Exec(ctx, `
+		INSERT INTO alerts (
+			id, exchange, market_type, symbol, type, severity, title, message,
+			event_id, rule_id, trigger_key, trigger_time, created_at
+		) VALUES ($1, 'binance', 'spot', 'SIT08', 'large_trade', 'info',
+			'SIT-08', 'nullable rule id', $2, NULL, $3, $4, $4)
+	`, alertID, "nullable-rule-event-"+suffix, "nullable-rule-trigger-"+suffix, now); err != nil {
+		t.Fatalf("insert alert: %v", err)
+	}
+	if err := repos.NotificationLogs.Insert(ctx, model.NotificationLog{
+		UserID:    &userID,
+		AlertID:   alertID,
+		Channel:   "telegram",
+		Target:    "sit08-target",
+		Status:    "sent",
+		CreatedAt: now,
+	}); err != nil {
+		t.Fatalf("insert notification log: %v", err)
+	}
+
+	alerts, err := repos.Alerts.ListForUser(ctx, userID, 20)
+	if err != nil {
+		t.Fatalf("list user alerts: %v", err)
+	}
+	if len(alerts) != 1 || alerts[0].ID != alertID || alerts[0].RuleID != "" {
+		t.Fatalf("unexpected user alerts: %+v", alerts)
+	}
+}
+
+// TestNotificationLogRepositoryLatestForUserHandlesNullableError verifies successful logs may omit an error message.
+//
+// Author: monsterfei
+// Date: 2026-08-31
+// @param t Testing context.
+func TestNotificationLogRepositoryLatestForUserHandlesNullableError(t *testing.T) {
+	repos := setupIntegrationRepositories(t)
+	ctx := context.Background()
+	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
+	now := time.Now().UTC()
+
+	var userID int64
+	if err := repos.Users.DB.QueryRow(ctx, `
+		INSERT INTO users (email, created_at, updated_at)
+		VALUES ($1, $2, $3)
+		RETURNING id
+	`, "nullable-error-"+suffix+"@example.test", now, now).Scan(&userID); err != nil {
+		t.Fatalf("insert user: %v", err)
+	}
+	alertID := "nullable-error-alert-" + suffix
+	t.Cleanup(func() {
+		_, _ = repos.NotificationLogs.DB.Exec(context.Background(), `DELETE FROM notification_logs WHERE alert_id = $1`, alertID)
+		_, _ = repos.Users.DB.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, userID)
+	})
+
+	if _, err := repos.NotificationLogs.DB.Exec(ctx, `
+		INSERT INTO notification_logs (user_id, alert_id, channel, target, status, error_message, created_at)
+		VALUES ($1, $2, 'telegram', 'sit08-target', 'sent', NULL, $3)
+	`, userID, alertID, now); err != nil {
+		t.Fatalf("insert notification log: %v", err)
+	}
+
+	logs, err := repos.NotificationLogs.LatestForUser(ctx, userID, 20)
+	if err != nil {
+		t.Fatalf("list user notification logs: %v", err)
+	}
+	if len(logs) != 1 || logs[0].AlertID != alertID || logs[0].ErrorMessage != "" {
+		t.Fatalf("unexpected user notification logs: %+v", logs)
 	}
 }
 

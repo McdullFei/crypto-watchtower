@@ -78,10 +78,13 @@ func (s stubRuleCountRepository) CountUserRules(context.Context, int64) (int64, 
 //
 // Author: monsterfei
 // Date: 2026-06-30
+// modified by monsterfei on 2026-08-31
+// @param t Testing context.
 func TestServiceProfileMasksTelegramBinding(t *testing.T) {
 	service := NewService(stubProfileRepository{
 		user: model.User{
 			ID:                      42,
+			Email:                   "user@example.com",
 			TelegramChatID:          "1234567890",
 			TelegramDeliveryEnabled: true,
 			CreatedAt:               time.Unix(1710000000, 0).UTC(),
@@ -94,7 +97,7 @@ func TestServiceProfileMasksTelegramBinding(t *testing.T) {
 	if err != nil {
 		t.Fatalf("profile: %v", err)
 	}
-	if profile.UserID != 42 || !profile.TelegramBound || profile.TelegramChatIDMasked != "****7890" {
+	if profile.UserID != 42 || profile.Email != "user@example.com" || !profile.TelegramBound || profile.TelegramChatIDMasked != "****7890" {
 		t.Fatalf("unexpected profile: %+v", profile)
 	}
 }

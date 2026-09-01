@@ -30,9 +30,13 @@ func (r AlertRepo) Insert(ctx context.Context, alert model.Alert) error {
 // Author: monsterfei
 // Date: 2026-06-30
 // modified by monsterfei on 2026-06-30
+// modified by monsterfei on 2026-08-31
+// @param ctx Request context.
+// @param filter Bounded alert filter.
+// @returns Matching alerts or a persistence error.
 func (r AlertRepo) List(ctx context.Context, filter ListFilter) ([]model.Alert, error) {
 	query := `
-		SELECT id, exchange, market_type, symbol, type, severity, title, message, event_id, rule_id, trigger_key, trigger_time, created_at
+		SELECT id, exchange, market_type, symbol, type, severity, title, message, event_id, COALESCE(rule_id, ''), trigger_key, trigger_time, created_at
 		FROM alerts
 		WHERE 1=1
 	`
@@ -82,10 +86,11 @@ func (r AlertRepo) List(ctx context.Context, filter ListFilter) ([]model.Alert, 
 // @param userID User id that owns the notification history.
 // @param limit Maximum number of alerts to return.
 // @returns Bounded alert history for the user.
+// modified by monsterfei on 2026-08-31
 func (r AlertRepo) ListForUser(ctx context.Context, userID int64, limit int) ([]model.Alert, error) {
 	rows, err := r.DB.Query(ctx, `
 		SELECT a.id, a.exchange, a.market_type, a.symbol, a.type, a.severity,
-			a.title, a.message, a.event_id, a.rule_id, a.trigger_key, a.trigger_time, a.created_at
+			a.title, a.message, a.event_id, COALESCE(a.rule_id, ''), a.trigger_key, a.trigger_time, a.created_at
 		FROM alerts a
 		WHERE EXISTS (
 			SELECT 1

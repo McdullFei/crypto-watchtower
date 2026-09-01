@@ -32,8 +32,10 @@ var (
 // Author: monsterfei
 // Date: 2026-06-30
 // modified by monsterfei on 2026-07-01
+// modified by monsterfei on 2026-08-31
 type UserProfile struct {
 	UserID                  int64                             `json:"user_id"`
+	Email                   string                            `json:"email"`
 	TelegramBound           bool                              `json:"telegram_bound"`
 	TelegramChatIDMasked    string                            `json:"telegram_chat_id_masked,omitempty"`
 	TelegramDeliveryEnabled bool                              `json:"telegram_delivery_enabled"`

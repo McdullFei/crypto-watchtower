@@ -24,9 +24,16 @@ func (r NotificationLogRepo) Insert(ctx context.Context, log model.NotificationL
 	return err
 }
 
+// List returns notification logs matching the provided bounded filter.
+//
+// Author: monsterfei
+// Date: 2026-08-31
+// @param ctx Request context.
+// @param filter Bounded notification log filter.
+// @returns Matching notification logs or a persistence error.
 func (r NotificationLogRepo) List(ctx context.Context, filter ListFilter) ([]model.NotificationLog, error) {
 	query := `
-		SELECT id, user_id, alert_id, channel, target, status, error_message, created_at
+		SELECT id, user_id, alert_id, channel, target, status, COALESCE(error_message, ''), created_at
 		FROM notification_logs
 		WHERE 1=1
 	`
@@ -64,9 +71,10 @@ func (r NotificationLogRepo) List(ctx context.Context, filter ListFilter) ([]mod
 // @param userID User id to filter.
 // @param limit Maximum number of rows to return.
 // @returns Bounded recent notification logs.
+// modified by monsterfei on 2026-08-31
 func (r NotificationLogRepo) LatestForUser(ctx context.Context, userID int64, limit int) ([]model.NotificationLog, error) {
 	rows, err := r.DB.Query(ctx, `
-		SELECT id, user_id, alert_id, channel, target, status, error_message, created_at
+		SELECT id, user_id, alert_id, channel, target, status, COALESCE(error_message, ''), created_at
 		FROM notification_logs
 		WHERE user_id = $1
 		ORDER BY created_at DESC

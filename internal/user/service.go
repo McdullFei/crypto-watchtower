@@ -115,6 +115,7 @@ func NewService(profiles ProfileRepository, alerts AlertRepository, rules RuleCo
 // @param ctx Request context.
 // @param userID User id to look up.
 // @returns Profile metadata with Telegram binding details masked.
+// modified by monsterfei on 2026-08-31
 func (s Service) Profile(ctx context.Context, userID int64) (api.UserProfile, error) {
 	profile := api.UserProfile{UserID: userID}
 	if s.profiles == nil {
@@ -136,6 +137,7 @@ func (s Service) Profile(ctx context.Context, userID int64) (api.UserProfile, er
 		status = model.UserStatusActive
 	}
 	profile.UserID = user.ID
+	profile.Email = user.Email
 	profile.TelegramBound = user.TelegramChatID != ""
 	profile.TelegramChatIDMasked = maskBinding(user.TelegramChatID)
 	profile.TelegramDeliveryEnabled = user.TelegramDeliveryEnabled
