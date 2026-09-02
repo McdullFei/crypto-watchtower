@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+
 	"github.com/renfei198727/crypto-watchtower/internal/model"
 )
 
@@ -289,6 +291,189 @@ func TestPipelineDeliversUserLargeTradeWindowRules(t *testing.T) {
 	if alert.TriggerKey == secondEvent.TriggerBucket("large_trade_window") {
 		t.Fatalf("expected user-isolated trigger key, got %q", alert.TriggerKey)
 	}
+}
+
+// TestPipelineUserWindowExpiresExactCutoff verifies the lower window boundary is exclusive.
+//
+// Author: monsterfei
+// Date: 2026-09-02
+// @param t Testing context.
+func TestPipelineUserWindowExpiresExactCutoff(t *testing.T) {
+	userID := int64(42)
+	repos := &fakePipelineRepositories{}
+	userRules := fakeUserRuleRepository{targets: []UserRuleTarget{{
+		User: model.User{ID: userID, Status: model.UserStatusActive, TelegramChatID: "12345", TelegramDeliveryEnabled: true},
+		Rule: model.AlertRule{ID: 9, UserID: &userID, Scope: "user", Exchange: "binance", Symbol: "BTCUSDT", RuleType: "large_trade_window", Threshold: 3000, WindowSec: 60, Enabled: true},
+	}}}
+	userSender := &fakeUserAlertSender{}
+	pipeline := NewPipeline(fakeEvaluator{}, repos, nil).WithUserFanout(userRules, "telegram", userSender)
+	base := testEventTime
+
+	for index, offset := range []time.Duration{0, 10 * time.Second, 20 * time.Second} {
+		if err := pipeline.HandleEvent(context.Background(), model.MarketEvent{
+			ID: "cutoff-event-" + string(rune('1'+index)), Exchange: "binance", MarketType: "spot", Symbol: "BTCUSDT", EventType: "agg_trade", Notional: 1000, EventTime: base.Add(offset),
+		}); err != nil {
+			t.Fatalf("handle threshold event %d: %v", index+1, err)
+		}
+	}
+	if len(repos.alerts) != 1 {
+		t.Fatalf("expected first threshold crossing, got %d alerts", len(repos.alerts))
+	}
+	if err := pipeline.HandleEvent(context.Background(), model.MarketEvent{
+		ID: "cutoff-event-4", Exchange: "binance", MarketType: "spot", Symbol: "BTCUSDT", EventType: "agg_trade", Notional: 1000, EventTime: base.Add(70 * time.Second),
+	}); err != nil {
+		t.Fatalf("handle cutoff event: %v", err)
+	}
+	if len(repos.alerts) != 1 {
+		t.Fatalf("expected exact-cutoff trade to expire without a second alert, got %d alerts", len(repos.alerts))
+	}
+	if err := pipeline.HandleEvent(context.Background(), model.MarketEvent{
+		ID: "cutoff-event-5", Exchange: "binance", MarketType: "spot", Symbol: "BTCUSDT", EventType: "agg_trade", Notional: 4000, EventTime: base.Add(80 * time.Second),
+	}); err != nil {
+		t.Fatalf("handle new crossing event: %v", err)
+	}
+	if len(repos.alerts) != 2 {
+		t.Fatalf("expected a new alert after old trades expired, got %d alerts", len(repos.alerts))
+	}
+}
+
+// TestAllowUserWindowAlertsDoesNotApplyWallClockRateLimit verifies window crossings rely on event-window state.
+//
+// Author: monsterfei
+// Date: 2026-09-02
+// @param t Testing context.
+func TestAllowUserWindowAlertsDoesNotApplyWallClockRateLimit(t *testing.T) {
+	redisClient := &setNXRedisStub{keys: map[string]struct{}{}}
+	pipeline := Pipeline{redis: redisClient}
+	first := model.Alert{Type: "large_trade_window", TriggerKey: "binance:BTCUSDT:large_trade_window:user:42:rule:9", EventID: "event-1"}
+	second := first
+	second.EventID = "event-2"
+
+	allowed, err := pipeline.allowUserAlert(context.Background(), first, 42)
+	if err != nil || !allowed {
+		t.Fatalf("expected first window crossing to be allowed, allowed=%v err=%v", allowed, err)
+	}
+	allowed, err = pipeline.allowUserAlert(context.Background(), second, 42)
+	if err != nil || !allowed {
+		t.Fatalf("expected distinct window crossing to bypass wall-clock limiting, allowed=%v err=%v", allowed, err)
+	}
+	allowed, err = pipeline.allowUserAlert(context.Background(), second, 42)
+	if err != nil || allowed {
+		t.Fatalf("expected duplicate event id to remain blocked, allowed=%v err=%v", allowed, err)
+	}
+
+	nonWindowRedis := &setNXRedisStub{keys: map[string]struct{}{}}
+	nonWindowPipeline := Pipeline{redis: nonWindowRedis}
+	largeTrade := model.Alert{Type: "large_trade", TriggerKey: "binance:BTCUSDT:large_trade:user:42:rule:10", EventID: "trade-1"}
+	allowed, err = nonWindowPipeline.allowUserAlert(context.Background(), largeTrade, 42)
+	if err != nil || !allowed {
+		t.Fatalf("expected first non-window alert to be allowed, allowed=%v err=%v", allowed, err)
+	}
+	largeTrade.EventID = "trade-2"
+	allowed, err = nonWindowPipeline.allowUserAlert(context.Background(), largeTrade, 42)
+	if err != nil || allowed {
+		t.Fatalf("expected non-window alert to retain wall-clock limiting, allowed=%v err=%v", allowed, err)
+	}
+}
+
+// TestUpdateMemoryUserWindowReturnsOneLockedSnapshot verifies before/after totals come from one critical section.
+//
+// Author: monsterfei
+// Date: 2026-09-02
+// @param t Testing context.
+func TestUpdateMemoryUserWindowReturnsOneLockedSnapshot(t *testing.T) {
+	pipeline := NewPipeline(fakeEvaluator{}, &fakePipelineRepositories{}, nil).WithUserFanout(fakeUserRuleRepository{}, "telegram", &fakeUserAlertSender{})
+	event := model.MarketEvent{ID: "atomic-memory-1", Exchange: "binance", MarketType: "spot", Symbol: "BTCUSDT", Notional: 1000, EventTime: testEventTime}
+	previous, total := pipeline.updateMemoryUserWindow(event, 42, 9, 60)
+	if previous != 0 || total != 1000 {
+		t.Fatalf("unexpected first atomic totals previous=%v total=%v", previous, total)
+	}
+	event.ID = "atomic-memory-2"
+	event.Notional = 1500
+	event.EventTime = event.EventTime.Add(10 * time.Second)
+	previous, total = pipeline.updateMemoryUserWindow(event, 42, 9, 60)
+	if previous != 1000 || total != 2500 {
+		t.Fatalf("unexpected second atomic totals previous=%v total=%v", previous, total)
+	}
+}
+
+// TestUpdateRedisUserWindowUsesOneAtomicScript verifies pruning, summing, insertion, and expiry share one Redis command.
+//
+// Author: monsterfei
+// Date: 2026-09-02
+// @param t Testing context.
+func TestUpdateRedisUserWindowUsesOneAtomicScript(t *testing.T) {
+	redisClient := &evalRedisStub{result: []any{"1000", "2500"}}
+	pipeline := Pipeline{redis: redisClient}
+	event := model.MarketEvent{ID: "atomic-redis-2", Exchange: "binance", MarketType: "spot", Symbol: "BTCUSDT", Notional: 1500, EventTime: testEventTime.Add(70 * time.Second)}
+	previous, total, err := pipeline.updateRedisUserWindow(context.Background(), event, 42, 9, 60)
+	if err != nil {
+		t.Fatalf("update Redis user window: %v", err)
+	}
+	if previous != 1000 || total != 2500 {
+		t.Fatalf("unexpected Redis atomic totals previous=%v total=%v", previous, total)
+	}
+	if redisClient.calls != 1 || len(redisClient.keys) != 1 || len(redisClient.args) != 5 {
+		t.Fatalf("expected one atomic Eval call, calls=%d keys=%v args=%v", redisClient.calls, redisClient.keys, redisClient.args)
+	}
+	wantCutoff := event.EventTime.Add(-60 * time.Second).UnixMilli()
+	if redisClient.args[0] != wantCutoff {
+		t.Fatalf("expected inclusive cutoff %d, got %v", wantCutoff, redisClient.args[0])
+	}
+}
+
+// setNXRedisStub emulates only the Redis SET NX behavior used by alert admission tests.
+//
+// Author: monsterfei
+// Date: 2026-09-02
+type setNXRedisStub struct {
+	redis.UniversalClient
+	keys map[string]struct{}
+}
+
+// evalRedisStub records the single Lua evaluation used by Redis-backed window updates.
+//
+// Author: monsterfei
+// Date: 2026-09-02
+type evalRedisStub struct {
+	redis.UniversalClient
+	result []any
+	calls  int
+	keys   []string
+	args   []any
+}
+
+// Eval records one Redis script invocation and returns configured totals.
+//
+// Author: monsterfei
+// Date: 2026-09-02
+// @param ctx Request context.
+// @param script Lua script source.
+// @param keys Redis keys used by the script.
+// @param args Script arguments.
+// @returns Redis command containing the configured script result.
+func (s *evalRedisStub) Eval(ctx context.Context, script string, keys []string, args ...any) *redis.Cmd {
+	s.calls++
+	s.keys = append([]string(nil), keys...)
+	s.args = append([]any(nil), args...)
+	return redis.NewCmdResult(s.result, nil)
+}
+
+// SetNX records a key once and reports whether it was newly added.
+//
+// Author: monsterfei
+// Date: 2026-09-02
+// @param ctx Request context.
+// @param key Redis key.
+// @param value Redis value.
+// @param expiration Requested expiry duration.
+// @returns Redis boolean command containing the SET NX result.
+func (s *setNXRedisStub) SetNX(ctx context.Context, key string, value any, expiration time.Duration) *redis.BoolCmd {
+	if _, exists := s.keys[key]; exists {
+		return redis.NewBoolResult(false, nil)
+	}
+	s.keys[key] = struct{}{}
+	return redis.NewBoolResult(true, nil)
 }
 
 // TestPipelineRecordsDisabledTelegramDelivery verifies disabled user delivery skips sends but logs intent.

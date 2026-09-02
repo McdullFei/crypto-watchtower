@@ -859,11 +859,13 @@ func (p Pipeline) evaluateUserWindowRule(ctx context.Context, event model.Market
 // @param ruleID Rule id for key isolation.
 // @param windowSec Window size in seconds.
 // @returns Previous total, updated total, and storage error.
+// modified by monsterfei on 2026-09-02
 func (p Pipeline) updateUserWindow(ctx context.Context, event model.MarketEvent, userID int64, ruleID int64, windowSec int) (float64, float64, error) {
 	if p.redis != nil {
 		return p.updateRedisUserWindow(ctx, event, userID, ruleID, windowSec)
 	}
-	return p.updateMemoryUserWindow(event, userID, ruleID, windowSec), p.userWindowTotal(event, userID, ruleID), nil
+	previousTotal, total := p.updateMemoryUserWindow(event, userID, ruleID, windowSec)
+	return previousTotal, total, nil
 }
 
 // updateMemoryUserWindow stores user window state in-process when Redis is not configured.
@@ -874,10 +876,11 @@ func (p Pipeline) updateUserWindow(ctx context.Context, event model.MarketEvent,
 // @param userID User id for key isolation.
 // @param ruleID Rule id for key isolation.
 // @param windowSec Window size in seconds.
-// @returns Previous total before adding the event.
-func (p Pipeline) updateMemoryUserWindow(event model.MarketEvent, userID int64, ruleID int64, windowSec int) float64 {
+// @returns Previous total and updated total from the same locked update.
+// modified by monsterfei on 2026-09-02
+func (p Pipeline) updateMemoryUserWindow(event model.MarketEvent, userID int64, ruleID int64, windowSec int) (float64, float64) {
 	if p.userWindowMu == nil || p.userWindows == nil {
-		return 0
+		return 0, 0
 	}
 	p.userWindowMu.Lock()
 	defer p.userWindowMu.Unlock()
@@ -894,7 +897,7 @@ func (p Pipeline) updateMemoryUserWindow(event model.MarketEvent, userID int64, 
 	kept := state.events[:0]
 	total := 0.0
 	for _, item := range state.events {
-		if item.eventTime.Before(cutoff) {
+		if !item.eventTime.After(cutoff) {
 			continue
 		}
 		kept = append(kept, item)
@@ -903,33 +906,33 @@ func (p Pipeline) updateMemoryUserWindow(event model.MarketEvent, userID int64, 
 	previousTotal := total
 	kept = append(kept, tradeWindowEvent{eventID: event.ID, notional: event.Notional, eventTime: event.EventTime})
 	state.events = kept
-	state.total = total + event.Notional
+	updatedTotal := total + event.Notional
+	state.total = updatedTotal
 	p.userWindows[key] = state
-	return previousTotal
+	return previousTotal, updatedTotal
 }
 
-// userWindowTotal returns current in-process user window total after an update.
-//
-// Author: monsterfei
-// Date: 2026-07-01
-// @param event Market event identifying the window.
-// @param userID User id for key isolation.
-// @param ruleID Rule id for key isolation.
-// @returns Current window total.
-func (p Pipeline) userWindowTotal(event model.MarketEvent, userID int64, ruleID int64) float64 {
-	if p.userWindowMu == nil || p.userWindows == nil {
-		return 0
-	}
-	p.userWindowMu.Lock()
-	defer p.userWindowMu.Unlock()
-	return p.userWindows[userWindowKey{
-		userID:     userID,
-		ruleID:     ruleID,
-		exchange:   event.Exchange,
-		marketType: event.MarketType,
-		symbol:     event.Symbol,
-	}].total
-}
+const updateRedisUserWindowScript = `
+local key = KEYS[1]
+local cutoff = ARGV[1]
+local score = ARGV[2]
+local member = ARGV[3]
+local ttl = ARGV[4]
+local notional = tonumber(ARGV[5])
+
+redis.call("ZREMRANGEBYSCORE", key, "-inf", cutoff)
+local members = redis.call("ZRANGE", key, 0, -1)
+local previous = 0
+for _, item in ipairs(members) do
+    local value = string.match(item, ":([^:]+)$")
+    if value then
+        previous = previous + (tonumber(value) or 0)
+    end
+end
+redis.call("ZADD", key, score, member)
+redis.call("EXPIRE", key, ttl)
+return {tostring(previous), tostring(previous + notional)}
+`
 
 // updateRedisUserWindow stores user window state in Redis sorted sets with expiry.
 //
@@ -941,48 +944,37 @@ func (p Pipeline) userWindowTotal(event model.MarketEvent, userID int64, ruleID 
 // @param ruleID Rule id for key isolation.
 // @param windowSec Window size in seconds.
 // @returns Previous total, updated total, and Redis error.
+// modified by monsterfei on 2026-09-02
 func (p Pipeline) updateRedisUserWindow(ctx context.Context, event model.MarketEvent, userID int64, ruleID int64, windowSec int) (float64, float64, error) {
 	key := fmt.Sprintf("window:user_rule:%d:%d:%s:%s:%s", userID, ruleID, event.Exchange, event.MarketType, event.Symbol)
 	cutoff := event.EventTime.Add(-time.Duration(windowSec) * time.Second).UnixMilli()
-	if err := p.redis.ZRemRangeByScore(ctx, key, "-inf", strconv.FormatInt(cutoff-1, 10)).Err(); err != nil {
-		return 0, 0, err
-	}
-	items, err := p.redis.ZRange(ctx, key, 0, -1).Result()
+	member := fmt.Sprintf("%s:%f", event.ID, event.Notional)
+	result, err := p.redis.Eval(
+		ctx,
+		updateRedisUserWindowScript,
+		[]string{key},
+		cutoff,
+		event.EventTime.UnixMilli(),
+		member,
+		windowSec+60,
+		event.Notional,
+	).Result()
 	if err != nil {
 		return 0, 0, err
 	}
-	previousTotal := sumWindowMembers(items)
-	member := fmt.Sprintf("%s:%f", event.ID, event.Notional)
-	if err := p.redis.ZAdd(ctx, key, redis.Z{Score: float64(event.EventTime.UnixMilli()), Member: member}).Err(); err != nil {
-		return 0, 0, err
+	values, ok := result.([]interface{})
+	if !ok || len(values) != 2 {
+		return 0, 0, fmt.Errorf("unexpected Redis user window result: %T", result)
 	}
-	if err := p.redis.Expire(ctx, key, time.Duration(windowSec+60)*time.Second).Err(); err != nil {
-		return 0, 0, err
+	previousTotal, err := strconv.ParseFloat(fmt.Sprint(values[0]), 64)
+	if err != nil {
+		return 0, 0, fmt.Errorf("parse Redis previous user window total: %w", err)
 	}
-	return previousTotal, previousTotal + event.Notional, nil
-}
-
-// sumWindowMembers sums notional values encoded in Redis window members.
-//
-// Author: monsterfei
-// Date: 2026-07-01
-// @param members Redis sorted-set member strings formatted as event_id:notional.
-// @returns Total notional for parseable members.
-func sumWindowMembers(members []string) float64 {
-	total := 0.0
-	for _, member := range members {
-		for i := len(member) - 1; i >= 0; i-- {
-			if member[i] != ':' {
-				continue
-			}
-			value, err := strconv.ParseFloat(member[i+1:], 64)
-			if err == nil {
-				total += value
-			}
-			break
-		}
+	total, err := strconv.ParseFloat(fmt.Sprint(values[1]), 64)
+	if err != nil {
+		return 0, 0, fmt.Errorf("parse Redis updated user window total: %w", err)
 	}
-	return total
+	return previousTotal, total, nil
 }
 
 func (p Pipeline) allowAlert(ctx context.Context, alert model.Alert) (bool, error) {
@@ -1003,7 +995,7 @@ func (p Pipeline) allowAlert(ctx context.Context, alert model.Alert) (bool, erro
 	return true, nil
 }
 
-// allowUserAlert applies user-specific dedupe and rate-limit keys.
+// allowUserAlert applies user-specific dedupe and rate-limit keys, except window crossings use event-state limiting.
 //
 // Author: monsterfei
 // Date: 2026-07-01
@@ -1011,6 +1003,7 @@ func (p Pipeline) allowAlert(ctx context.Context, alert model.Alert) (bool, erro
 // @param alert Alert to dedupe.
 // @param userID User id for key isolation.
 // @returns Whether delivery is allowed and Redis error.
+// modified by monsterfei on 2026-09-02
 func (p Pipeline) allowUserAlert(ctx context.Context, alert model.Alert, userID int64) (bool, error) {
 	if p.redis == nil {
 		return true, nil
@@ -1020,6 +1013,9 @@ func (p Pipeline) allowUserAlert(ctx context.Context, alert model.Alert, userID 
 	set, err := p.redis.SetNX(ctx, dedupeKey, "1", 120*time.Second).Result()
 	if err != nil || !set {
 		return set, err
+	}
+	if alert.Type == "large_trade_window" {
+		return true, nil
 	}
 	set, err = p.redis.SetNX(ctx, limitedKey, "1", 60*time.Second).Result()
 	if err != nil || !set {
