@@ -235,6 +235,14 @@ func (c telegramChat) ChatIDString() string {
 	return c.ID.String()
 }
 
+// GetUpdates reads one bounded Telegram update batch.
+//
+// Author: monsterfei
+// Date: 2026-09-02
+// @param ctx Request context.
+// @param offset First update identifier to return.
+// @param timeoutSec Telegram long-poll timeout in seconds.
+// @returns Telegram updates or a credential-safe request error.
 func (c TelegramClient) GetUpdates(ctx context.Context, offset int64, timeoutSec int) ([]telegramUpdate, error) {
 	payload := map[string]any{
 		"offset":          offset,
@@ -247,7 +255,7 @@ func (c TelegramClient) GetUpdates(ctx context.Context, offset int64, timeoutSec
 	}
 	resp, err := c.Client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, safeTelegramTransportError(err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= http.StatusBadRequest {
@@ -264,6 +272,14 @@ func (c TelegramClient) GetUpdates(ctx context.Context, offset int64, timeoutSec
 	return out.Result, nil
 }
 
+// SendMessage sends text to one Telegram chat through the configured Bot API.
+//
+// Author: monsterfei
+// Date: 2026-09-02
+// @param ctx Request context.
+// @param chatID Telegram chat identifier.
+// @param text Message body.
+// @returns Credential-safe delivery error.
 func (c TelegramClient) SendMessage(ctx context.Context, chatID, text string) error {
 	req, err := c.newJSONRequest(ctx, "sendMessage", map[string]string{
 		"chat_id": chatID,
@@ -274,13 +290,26 @@ func (c TelegramClient) SendMessage(ctx context.Context, chatID, text string) er
 	}
 	resp, err := c.Client.Do(req)
 	if err != nil {
-		return err
+		return safeTelegramTransportError(err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= http.StatusBadRequest {
 		return telegramHTTPError{StatusCode: resp.StatusCode}
 	}
 	return nil
+}
+
+// safeTelegramTransportError removes request URLs and bot credentials from transport failures.
+//
+// Author: monsterfei
+// Date: 2026-09-02
+// @param err HTTP transport error.
+// @returns Bounded credential-safe Telegram error.
+func safeTelegramTransportError(err error) error {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return errors.New("telegram request timed out")
+	}
+	return errors.New("telegram request failed: network error")
 }
 
 func (c TelegramClient) newJSONRequest(ctx context.Context, method string, body any) (*http.Request, error) {

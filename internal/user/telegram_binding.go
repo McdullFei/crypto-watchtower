@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
 
@@ -105,13 +106,14 @@ func (s TelegramBindingService) CreateBindingToken(ctx context.Context, userID i
 // @param rawToken Raw binding token from Telegram command.
 // @param chatID Telegram chat id to bind.
 // @returns Bound user id, whether the token was valid, and persistence error.
+// modified by monsterfei on 2026-09-02
 func (s TelegramBindingService) BindTelegramChat(ctx context.Context, rawToken string, chatID string) (int64, bool, error) {
 	if s.tokens == nil || s.accounts == nil {
 		return 0, false, errors.New("telegram binding repositories are not configured")
 	}
 	rawToken = strings.TrimSpace(rawToken)
 	chatID = strings.TrimSpace(chatID)
-	if rawToken == "" || chatID == "" {
+	if rawToken == "" || !validTelegramChatID(chatID) {
 		return 0, false, nil
 	}
 	now := time.Now().UTC()
@@ -127,6 +129,17 @@ func (s TelegramBindingService) BindTelegramChat(ctx context.Context, rawToken s
 		return 0, false, err
 	}
 	return token.UserID, true, nil
+}
+
+// validTelegramChatID accepts the signed non-zero integer identifiers returned by Telegram.
+//
+// Author: monsterfei
+// Date: 2026-09-02
+// @param chatID Telegram chat identifier.
+// @returns Whether the identifier is safe to persist and send to.
+func validTelegramChatID(chatID string) bool {
+	parsed, err := strconv.ParseInt(chatID, 10, 64)
+	return err == nil && parsed != 0
 }
 
 // randomBindingToken creates a URL-safe binding token with 32 bytes of entropy.

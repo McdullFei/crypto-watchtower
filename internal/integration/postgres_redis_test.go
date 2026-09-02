@@ -602,6 +602,75 @@ func TestNotificationLogRepositoryLatestForUserHandlesNullableError(t *testing.T
 	}
 }
 
+// TestNotificationLogRepositoryFiltersOwnershipAndMasksTargets verifies Admin notification reads are scoped and safe.
+//
+// Author: monsterfei
+// Date: 2026-09-02
+// @param t Testing context.
+func TestNotificationLogRepositoryFiltersOwnershipAndMasksTargets(t *testing.T) {
+	repos := setupIntegrationRepositories(t)
+	ctx := context.Background()
+	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
+	now := time.Now().UTC()
+
+	var userID int64
+	if err := repos.Users.DB.QueryRow(ctx, `
+		INSERT INTO users (email, created_at, updated_at)
+		VALUES ($1, $2, $3)
+		RETURNING id
+	`, "notification-filter-"+suffix+"@example.test", now, now).Scan(&userID); err != nil {
+		t.Fatalf("insert user: %v", err)
+	}
+	var otherUserID int64
+	if err := repos.Users.DB.QueryRow(ctx, `
+		INSERT INTO users (email, created_at, updated_at)
+		VALUES ($1, $2, $3)
+		RETURNING id
+	`, "notification-filter-other-"+suffix+"@example.test", now, now).Scan(&otherUserID); err != nil {
+		t.Fatalf("insert other user: %v", err)
+	}
+	userAlertID := "notification-filter-user-" + suffix
+	systemAlertID := "notification-filter-system-" + suffix
+	otherAlertID := "notification-filter-other-" + suffix
+	t.Cleanup(func() {
+		_, _ = repos.NotificationLogs.DB.Exec(context.Background(), `DELETE FROM notification_logs WHERE alert_id IN ($1, $2, $3)`, userAlertID, systemAlertID, otherAlertID)
+		_, _ = repos.Users.DB.Exec(context.Background(), `DELETE FROM users WHERE id IN ($1, $2)`, userID, otherUserID)
+	})
+
+	if _, err := repos.NotificationLogs.DB.Exec(ctx, `
+		INSERT INTO notification_logs (user_id, alert_id, channel, target, status, error_message, created_at)
+		VALUES ($1, $2, 'telegram', '100001', 'failed', 'bounded failure', $6),
+		       (NULL, $3, 'telegram', 'operator-chat', 'failed', '', $6),
+		       ($4, $5, 'telegram', '100002', 'failed', '', $6)
+	`, userID, userAlertID, systemAlertID, otherUserID, otherAlertID, now); err != nil {
+		t.Fatalf("insert notification logs: %v", err)
+	}
+
+	logs, err := repos.NotificationLogs.List(ctx, storage.ListFilter{Scope: "user", UserID: &userID, Status: "failed", Limit: 10})
+	if err != nil {
+		t.Fatalf("list filtered notification logs: %v", err)
+	}
+	if len(logs) != 1 || logs[0].AlertID != userAlertID || logs[0].Target != "****0001" {
+		t.Fatalf("unexpected safe filtered logs: %+v", logs)
+	}
+	systemLogs, err := repos.NotificationLogs.List(ctx, storage.ListFilter{Scope: "system", Status: "failed", Limit: 10})
+	if err != nil {
+		t.Fatalf("list system notification logs: %v", err)
+	}
+	foundSystem := false
+	for _, log := range systemLogs {
+		if log.AlertID == systemAlertID {
+			foundSystem = true
+			if log.Target != "operator-chat" {
+				t.Fatalf("expected non-user target to remain useful, got %+v", log)
+			}
+		}
+	}
+	if !foundSystem {
+		t.Fatalf("expected scoped system notification log, got %+v", systemLogs)
+	}
+}
+
 // getenvDefault returns an environment value or the provided fallback.
 //
 // Author: monsterfei

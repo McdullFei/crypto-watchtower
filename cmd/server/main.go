@@ -26,6 +26,10 @@ import (
 	"github.com/renfei198727/crypto-watchtower/internal/user"
 )
 
+// main initializes runtime dependencies and serves the CryptoWatchtower application.
+//
+// Author: monsterfei
+// Date: 2026-09-02
 func main() {
 	cfgPath := "configs/config.example.yaml"
 	if env := os.Getenv("CONFIG_PATH"); env != "" {
@@ -65,6 +69,7 @@ func main() {
 	bus := eventbus.New(256)
 	repos := storage.NewRepositories(postgres)
 	tg := notifier.NewTelegramNotifier(cfg.Telegram.BotToken, cfg.Telegram.DefaultChatID, nil)
+	tg.BaseURL = cfg.Telegram.APIBaseURL
 	engine := rule.NewEngine(rule.Config{
 		LargeTradeThreshold:       cfg.Rules.LargeTradeSingleUSDT,
 		LargeTradeWindowThreshold: cfg.Rules.LargeTradeWindowUSDT,
@@ -148,7 +153,7 @@ func main() {
 
 	if cfg.Telegram.Enabled && cfg.Telegram.Mode == "polling" {
 		poller := notifier.NewTelegramPoller(
-			notifier.NewTelegramClient(cfg.Telegram.BotToken, "", nil),
+			notifier.NewTelegramClient(cfg.Telegram.BotToken, cfg.Telegram.APIBaseURL, nil),
 			repos.Users,
 			ruleService,
 			telegramBindingService,

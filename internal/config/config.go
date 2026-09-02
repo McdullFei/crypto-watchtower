@@ -10,6 +10,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Config contains validated runtime settings for the watchtower service.
+//
+// Author: monsterfei
+// Date: 2026-09-02
 type Config struct {
 	App struct {
 		Env string `yaml:"env"`
@@ -31,6 +35,7 @@ type Config struct {
 		Enabled       bool   `yaml:"enabled"`
 		BotToken      string `yaml:"bot_token"`
 		DefaultChatID string `yaml:"default_chat_id"`
+		APIBaseURL    string `yaml:"api_base_url"`
 		ParseMode     string `yaml:"parse_mode"`
 		Mode          string `yaml:"mode"`
 	} `yaml:"telegram"`
@@ -149,7 +154,11 @@ func Load(path string) (Config, error) {
 // Author: monsterfei
 // Date: 2026-06-30
 // modified by monsterfei on 2026-06-30
+// modified by monsterfei on 2026-09-02
 func applyDefaults(cfg *Config) {
+	if cfg.Telegram.APIBaseURL == "" {
+		cfg.Telegram.APIBaseURL = "https://api.telegram.org/bot"
+	}
 	if cfg.Telegram.ParseMode == "" {
 		cfg.Telegram.ParseMode = "Markdown"
 	}
@@ -214,9 +223,11 @@ func applyDefaults(cfg *Config) {
 // Author: monsterfei
 // Date: 2026-06-30
 // modified by monsterfei on 2026-06-30
+// modified by monsterfei on 2026-09-02
 func applyEnvOverrides(cfg *Config) {
 	overrideString(&cfg.Telegram.BotToken, "CW_TELEGRAM_BOT_TOKEN")
 	overrideString(&cfg.Telegram.DefaultChatID, "CW_TELEGRAM_DEFAULT_CHAT_ID")
+	overrideString(&cfg.Telegram.APIBaseURL, "CW_TELEGRAM_API_BASE_URL")
 	overrideString(&cfg.Postgres.DSN, "CW_POSTGRES_DSN")
 	overrideString(&cfg.Redis.Addr, "CW_REDIS_ADDR")
 	overrideString(&cfg.Redis.Password, "CW_REDIS_PASSWORD")

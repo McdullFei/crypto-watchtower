@@ -3,6 +3,7 @@ package notifier
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -281,4 +282,42 @@ func TestTelegramNotifierRetriesTemporaryFailures(t *testing.T) {
 	if attempts != 3 {
 		t.Fatalf("expected 3 attempts, got %d", attempts)
 	}
+}
+
+// TestTelegramClientRedactsBotTokenFromNetworkErrors verifies request URLs cannot leak credentials through errors.
+//
+// Author: monsterfei
+// Date: 2026-09-02
+// @param t Testing context.
+func TestTelegramClientRedactsBotTokenFromNetworkErrors(t *testing.T) {
+	const botToken = "sit-secret-bot-token"
+	client := NewTelegramClient(botToken, "http://telegram.invalid/bot", &http.Client{
+		Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+			return nil, errors.New("network unavailable")
+		}),
+	})
+
+	err := client.SendMessage(context.Background(), "100001", "test")
+	if err == nil {
+		t.Fatal("expected Telegram network error")
+	}
+	if strings.Contains(err.Error(), botToken) || len(err.Error()) > 128 {
+		t.Fatalf("expected bounded redacted Telegram error, got %q", err.Error())
+	}
+}
+
+// roundTripFunc adapts a function into an HTTP transport for notifier tests.
+//
+// Author: monsterfei
+// Date: 2026-09-02
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+// RoundTrip executes the configured notifier test transport.
+//
+// Author: monsterfei
+// Date: 2026-09-02
+// @param request Outgoing HTTP request.
+// @returns HTTP response and transport error.
+func (f roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return f(request)
 }

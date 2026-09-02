@@ -31,16 +31,33 @@ func (r NotificationLogRepo) Insert(ctx context.Context, log model.NotificationL
 // @param ctx Request context.
 // @param filter Bounded notification log filter.
 // @returns Matching notification logs or a persistence error.
+// modified by monsterfei on 2026-09-02
 func (r NotificationLogRepo) List(ctx context.Context, filter ListFilter) ([]model.NotificationLog, error) {
 	query := `
-		SELECT id, user_id, alert_id, channel, target, status, COALESCE(error_message, ''), created_at
+		SELECT id, user_id, alert_id, channel,
+			CASE
+				WHEN target = '' THEN ''
+				WHEN channel <> 'telegram' OR target !~ '^-?[0-9]+$' THEN target
+				WHEN LENGTH(target) <= 4 THEN '****'
+				ELSE '****' || RIGHT(target, 4)
+			END,
+			status, COALESCE(error_message, ''), created_at
 		FROM notification_logs
 		WHERE 1=1
 	`
-	args := make([]any, 0, 2)
+	args := make([]any, 0, 4)
 	if filter.Status != "" {
 		args = append(args, filter.Status)
 		query += fmt.Sprintf(" AND status = $%d", len(args))
+	}
+	if filter.Scope == "user" {
+		query += " AND user_id IS NOT NULL"
+	} else if filter.Scope == "system" {
+		query += " AND user_id IS NULL"
+	}
+	if filter.UserID != nil {
+		args = append(args, *filter.UserID)
+		query += fmt.Sprintf(" AND user_id = $%d", len(args))
 	}
 	query += " ORDER BY created_at DESC"
 	args = append(args, normalizedLimit(filter.Limit))

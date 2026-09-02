@@ -3,6 +3,8 @@ package user
 import (
 	"context"
 	"errors"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -141,5 +143,32 @@ func TestTelegramBindingServiceConsumesTokenOnce(t *testing.T) {
 	}
 	if _, ok, err := service.BindTelegramChat(context.Background(), rawToken, "67890"); err != nil || ok {
 		t.Fatalf("expected token reuse to fail, ok=%v err=%v", ok, err)
+	}
+}
+
+// TestTelegramBindingServiceRejectsInvalidChatIDs verifies invalid Telegram identifiers never reach persistence.
+//
+// Author: monsterfei
+// Date: 2026-09-02
+// @param t Testing context.
+func TestTelegramBindingServiceRejectsInvalidChatIDs(t *testing.T) {
+	tests := []string{"not-a-chat", "0", strings.Repeat("9", 129)}
+	for index, chatID := range tests {
+		t.Run(strconv.Itoa(index), func(t *testing.T) {
+			tokens := newMemoryTelegramBindingTokens()
+			accounts := newMemoryTelegramAccountBinder()
+			service := NewTelegramBindingService(tokens, accounts, TelegramBindingConfig{TokenTTL: time.Hour})
+			rawToken, _, err := service.CreateBindingToken(context.Background(), 42)
+			if err != nil {
+				t.Fatalf("create binding token: %v", err)
+			}
+
+			if _, ok, err := service.BindTelegramChat(context.Background(), rawToken, chatID); err != nil || ok {
+				t.Fatalf("expected invalid chat id to be rejected, ok=%v err=%v", ok, err)
+			}
+			if len(accounts.bindings) != 0 {
+				t.Fatalf("invalid chat id reached persistence: %+v", accounts.bindings)
+			}
+		})
 	}
 }

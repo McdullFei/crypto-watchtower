@@ -116,9 +116,18 @@ func (s Service) ListEvents(ctx context.Context, filter api.AdminListFilter) ([]
 	})
 }
 
+// ListNotifications returns bounded, filtered notification logs with safe targets.
+//
+// Author: monsterfei
+// Date: 2026-09-02
+// @param ctx Request context.
+// @param filter Admin notification filters.
+// @returns Matching notification logs or a persistence error.
 func (s Service) ListNotifications(ctx context.Context, filter api.AdminListFilter) ([]model.NotificationLog, error) {
 	return s.repos.NotificationLogs.List(ctx, storage.ListFilter{
 		Status: filter.Status,
+		Scope:  filter.Scope,
+		UserID: filter.UserID,
 		Limit:  filter.Limit,
 	})
 }

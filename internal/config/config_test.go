@@ -23,6 +23,11 @@ func TestValidateRequiresTelegramTokenWhenEnabled(t *testing.T) {
 	}
 }
 
+// TestLoadAppliesEnvOverride verifies Telegram runtime settings support environment overrides.
+//
+// Author: monsterfei
+// Date: 2026-09-02
+// @param t Testing context.
 func TestLoadAppliesEnvOverride(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
@@ -47,6 +52,7 @@ func TestLoadAppliesEnvOverride(t *testing.T) {
 	}
 
 	t.Setenv("CW_TELEGRAM_BOT_TOKEN", "from-env")
+	t.Setenv("CW_TELEGRAM_API_BASE_URL", "http://telegram-mock.test/bot")
 
 	cfg, err := Load(path)
 	if err != nil {
@@ -54,6 +60,9 @@ func TestLoadAppliesEnvOverride(t *testing.T) {
 	}
 	if cfg.Telegram.BotToken != "from-env" {
 		t.Fatalf("expected env override, got %q", cfg.Telegram.BotToken)
+	}
+	if cfg.Telegram.APIBaseURL != "http://telegram-mock.test/bot" {
+		t.Fatalf("expected Telegram API base URL override, got %q", cfg.Telegram.APIBaseURL)
 	}
 }
 

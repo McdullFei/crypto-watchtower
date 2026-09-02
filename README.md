@@ -128,6 +128,7 @@ configs/config.example.yaml
 | `redis.password` | Redis password; local initialization default is `CryptoWatchtower_Local_2026!` |
 | `telegram.bot_token` | Telegram Bot token |
 | `telegram.default_chat_id` | Default Telegram chat/channel target |
+| `telegram.api_base_url` | Telegram Bot API base URL; defaults to the official API |
 | `api.bearer_token` | Bearer token for protected operator APIs |
 | `auth.session_ttl_hours` | Session cookie lifetime in hours; defaults to `168` |
 | `auth.password_reset_ttl_min` | Password reset token lifetime in minutes; defaults to `30` |
@@ -141,6 +142,7 @@ CW_REDIS_ADDR="localhost:6379"
 CW_REDIS_PASSWORD="CryptoWatchtower_Local_2026!"
 CW_TELEGRAM_BOT_TOKEN="YOUR_BOT_TOKEN"
 CW_TELEGRAM_DEFAULT_CHAT_ID="YOUR_CHAT_ID"
+CW_TELEGRAM_API_BASE_URL="https://api.telegram.org/bot"
 CW_API_BEARER_TOKEN="change-me"
 CW_AUTH_SESSION_TTL_HOURS="168"
 CW_AUTH_PASSWORD_RESET_TTL_MIN="30"
